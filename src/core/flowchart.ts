@@ -10,7 +10,7 @@
 // 선(out)은 모두 상자의 바닥(y = height)까지 내려와 있다. break/continue 선은
 // 빠져나가는 지점에 멈춰 있다가, 그 선이 속한 반복문이 도형을 피해 통로로 잇는다.
 
-import type { ForEachStmt, ForRangeStmt, IfStmt, Stmt } from './ast';
+import type { ForEachStmt, ForRangeStmt, FuncDef, IfStmt, Stmt } from './ast';
 import type { EdgeLabel, FlowEdge, FlowGraph, FlowNode, NodeKind, Point, Side } from './types';
 import { nodeSize } from './shapes';
 import { pickIndexVar, rangeCondition, rangeIncrement, toArrow } from './labels';
@@ -25,6 +25,7 @@ const COL_GAP = 36; // 나란한 갈래 사이 간격
 const LANE = 24; // 통로(우회하는 화살표)와 도형 사이 간격
 const LABEL_ROOM = 56; // 판단 오른쪽 꼭짓점에서 첫 세로선까지 (아니오/예 라벨 자리)
 const PAD = 24; // 그림 바깥 여백
+const FUNC_GAP = 90; // 본 순서도와 함수 순서도 사이 간격
 
 interface End {
   id: string;
@@ -257,7 +258,22 @@ class Builder {
         return this.forRange(s);
       case 'forEach':
         return this.forEach(s);
+      case 'return': {
+        // 반환은 그 자리에서 함수가 끝나므로 터미널 도형으로 그리고, 이어지는 선이 없다
+        const box = this.leaf('terminal', s.value ? `반환 ${s.value}` : '반환', s.line);
+        box.out = [];
+        return box;
+      }
+      case 'def':
+        return null; // 함수는 따로 된 순서도로 그린다 (buildFlowchart)
     }
+  }
+
+  /** 함수 하나의 순서도: 터미널 '이름(매개변수)' → 본문 → 터미널 '반환' */
+  func(def: FuncDef): Box {
+    const start = this.leaf('terminal', `${def.name}(${def.params.join(', ')})`, def.line);
+    const body = this.sequence([start, ...def.body.map((x) => this.stmt(x))]);
+    return body.out.length ? this.sequence([body, this.leaf('terminal', '반환')]) : body;
   }
 
   /** if / elif / else — elif는 '아니오' 쪽에 이어지는 if로 그린다 */
@@ -503,9 +519,19 @@ class Builder {
 export function buildFlowchart(program: Stmt[], opts: BuildOptions = {}): FlowGraph {
   const b = new Builder(opts);
   const start = b.leaf('terminal', '시작');
-  const body = program.map((s) => b.stmt(s));
+  const body = program.filter((s) => s.type !== 'def').map((s) => b.stmt(s));
   const end = b.leaf('terminal', '끝');
   const all = b.sequence([start, ...body, end]);
+
+  // 함수마다 따로 된 순서도를 본 순서도 오른쪽에 나란히 놓는다
+  let right = all.right;
+  for (const def of program.filter((s): s is FuncDef => s.type === 'def')) {
+    const f = b.func(def);
+    const placed = shift(f, right + FUNC_GAP - f.left, 0);
+    all.nodes.push(...placed.nodes);
+    all.edges.push(...placed.edges);
+    right = placed.right;
+  }
 
   // 그림 전체를 왼쪽 위 여백에 맞추고, 도형 번호를 위→아래, 왼쪽→오른쪽 읽는 순서로 다시 매긴다
   let minX = Infinity;

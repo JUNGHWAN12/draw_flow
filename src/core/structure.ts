@@ -4,7 +4,7 @@
 // 그렇다면 파이썬식 의사코드로 되돌릴 수 있는 구문 트리를 만든다.
 // 구조적이지 않으면 어느 도형이 문제인지 알려 준다.
 
-import type { ForRangeStmt, IfStmt, SimpleStmt, Stmt } from './ast';
+import type { ForRangeStmt, FuncDef, IfStmt, SimpleStmt, Stmt } from './ast';
 import type { FlowEdge, FlowGraph, FlowNode } from './types';
 import { findAssignment } from './text';
 
@@ -33,6 +33,10 @@ interface LoopCtx {
 }
 
 const IDENT = /^[\p{L}_][\p{L}\p{N}_]*$/u;
+/** 함수 순서도의 시작 터미널: '이름(매개변수)' */
+const FUNC_HEAD = /^([\p{L}_][\p{L}\p{N}_]*)\s*\((.*)\)$/su;
+/** 함수 순서도의 반환 터미널: '반환' 또는 '반환 값' */
+const RETURN = /^반환(?:\s+(.*))?$/s;
 
 /** 간단한 비교식은 반대로 뒤집고, 그 밖에는 not ( … ) 으로 감싼다 */
 export function negate(cond: string): string {
@@ -72,6 +76,9 @@ class Structurer {
   private readonly heads = new Set<string>();
   private readonly done = new Set<string>();
   private readonly ends = new Set<string>();
+  private readonly returns = new Set<string>();
+  private mainStart = '';
+  private readonly funcStarts: { id: string; name: string; params: string[]; line?: number }[] = [];
 
   constructor(g: FlowGraph) {
     for (const n of g.nodes) {
@@ -84,11 +91,23 @@ class Structurer {
   run(g: FlowGraph): Stmt[] {
     const issues = this.validate(g);
     if (issues.length) throw issues;
-    const start = g.nodes.find((n) => n.kind === 'terminal' && !g.edges.some((e) => e.target === n.id))!;
-    this.findLoops(start.id);
-    const { stmts, end } = this.seq(this.next(start.id), new Set(), null);
+
+    // 함수 순서도 → def
+    const defs: FuncDef[] = [];
+    for (const f of this.funcStarts) {
+      this.findLoops(f.id);
+      const { stmts, end } = this.seq(this.next(f.id), new Set(), null);
+      if (end === END) throw new StructureError(`함수 '${f.name}' 순서도는 '반환' 터미널로 끝나야 합니다.`, f.id);
+      // 맨 끝의 값 없는 '반환'은 코드에 쓰지 않아도 된다
+      const last = stmts[stmts.length - 1];
+      if (last?.type === 'return' && !last.value) stmts.pop();
+      defs.push({ type: 'def', name: f.name, params: f.params, body: stmts, line: f.line ?? 0 });
+    }
+
+    this.findLoops(this.mainStart);
+    const { stmts, end } = this.seq(this.next(this.mainStart), new Set(), null);
     if (end !== END && end !== JUMPED) throw new StructureError('흐름이 끝 터미널에 도착하지 않습니다.', end);
-    return stmts;
+    return [...defs, ...stmts];
   }
 
   /** 도형마다 화살표 개수·라벨 검사 */
@@ -97,10 +116,28 @@ class Structurer {
     const incoming = (id: string) => g.edges.filter((e) => e.target === id).length;
     const terminals = g.nodes.filter((n) => n.kind === 'terminal');
     const starts = terminals.filter((n) => !incoming(n.id));
-    for (const t of terminals) if (incoming(t.id) && !this.out.get(t.id)!.length) this.ends.add(t.id);
+    for (const t of terminals) {
+      if (!incoming(t.id) || this.out.get(t.id)!.length) continue;
+      if (RETURN.test(t.label.trim())) this.returns.add(t.id);
+      else this.ends.add(t.id);
+    }
+    const mains = starts.filter((n) => {
+      const m = n.label.trim().match(FUNC_HEAD);
+      if (!m) return true;
+      const params = m[2].trim() ? m[2].split(',').map((p) => p.trim()) : [];
+      if (params.some((p) => !IDENT.test(p)))
+        issues.push({ nodeId: n.id, message: `함수 '${n.label}'의 매개변수 이름이 올바르지 않습니다.` });
+      this.funcStarts.push({ id: n.id, name: m[1], params, line: n.line });
+      return false;
+    });
 
-    if (starts.length !== 1)
-      issues.push({ message: starts.length ? '시작 터미널은 하나만 있어야 합니다.' : '시작 터미널이 없습니다.' });
+    if (mains.length !== 1)
+      issues.push({
+        message: mains.length
+          ? '시작 터미널은 하나만 있어야 합니다. (함수 순서도는 시작 터미널에 "이름(매개변수)"를 씁니다)'
+          : '시작 터미널이 없습니다.',
+      });
+    else this.mainStart = mains[0].id;
     if (!this.ends.size) issues.push({ message: '끝 터미널이 없습니다.' });
 
     for (const n of g.nodes) {
@@ -129,7 +166,7 @@ class Structurer {
 
     // 시작에서 도달할 수 없는 도형
     const seen = new Set<string>();
-    const stack = [starts[0].id];
+    const stack = starts.map((n) => n.id);
     while (stack.length) {
       const id = stack.pop()!;
       if (seen.has(id)) continue;
@@ -197,6 +234,12 @@ class Structurer {
           cur,
         );
       const n = this.nodes.get(cur)!;
+      if (n.kind === 'terminal' && this.returns.has(cur)) {
+        this.done.add(cur);
+        const value = n.label.trim().match(RETURN)![1]?.trim() ?? '';
+        stmts.push({ type: 'return', value, line: n.line ?? 0 });
+        return { stmts, end: JUMPED };
+      }
       if (n.kind === 'terminal') throw new StructureError('순서도 중간에 터미널이 있습니다.', cur);
       if (this.heads.has(cur)) {
         const { stmt, exit } = this.whileLoop(n, stops);
@@ -248,6 +291,14 @@ class Structurer {
     const rn = this.reach(no, outer);
     const common = [...ry].filter((id) => rn.has(id));
     let merge = common.find((c) => common.every((o) => o === c || this.reach(c, outer).has(o))) ?? null;
+
+    // 'if 조건: return …' 처럼 한쪽 갈래가 함수를 끝내면, 다른 갈래가 if 다음 문장이 된다
+    if (!merge) {
+      const flowsOn = (r: Set<string>) =>
+        r.has(END) || [...r].some((x) => outer.has(x)) || (!!loop && (r.has(loop.head) || r.has(loop.exit)));
+      if (!flowsOn(ry)) merge = no;
+      else if (!flowsOn(rn)) merge = yes;
+    }
 
     // 'if 조건: break' 처럼 한쪽 갈래만 반복을 빠져나가면, 다른 갈래가 if 다음 문장이 된다
     if (!merge && loop) {
@@ -375,7 +426,7 @@ export function prettify(stmts: Stmt[]): Stmt[] {
         branches: s.branches.map((b) => ({ ...b, body: prettify(b.body) })),
         elseBody: s.elseBody && prettify(s.elseBody),
       };
-    else if (s.type === 'while') s = { ...s, body: prettify(s.body) };
+    else if (s.type === 'while' || s.type === 'def') s = { ...s, body: prettify(s.body) };
 
     const f = s.type === 'while' && out.length ? toFor(out[out.length - 1], s) : null;
     if (f) {

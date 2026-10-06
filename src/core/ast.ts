@@ -6,7 +6,9 @@ export type Stmt =
   | WhileStmt
   | ForRangeStmt
   | ForEachStmt
-  | JumpStmt;
+  | JumpStmt
+  | FuncDef
+  | ReturnStmt;
 
 /** 대입·계산·함수 호출, 입력, 출력 — 모두 '처리' 도형이 된다. */
 export interface SimpleStmt {
@@ -47,6 +49,22 @@ export interface ForEachStmt {
   variable: string;
   iterable: string;
   body: Stmt[];
+  line: number;
+}
+
+/** def 함수이름(매개변수): — 맨 바깥에서만 쓸 수 있고, 따로 된 순서도로 그린다 */
+export interface FuncDef {
+  type: 'def';
+  name: string;
+  params: string[];
+  body: Stmt[];
+  line: number;
+}
+
+export interface ReturnStmt {
+  type: 'return';
+  /** 돌려줄 값 (없으면 빈 글자) */
+  value: string;
   line: number;
 }
 

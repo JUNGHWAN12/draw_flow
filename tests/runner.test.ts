@@ -117,3 +117,37 @@ describe('순서도 실행', () => {
     expect(t.steps[1].error).toContain('실행할 수 있는 문장이 아닙니다');
   });
 });
+
+describe('함수 실행', () => {
+  it('함수를 부르면 함수 순서도로 들어가 값을 돌려받는다', () => {
+    const t = run('def 두배(x):\n    y = x * 2\n    return y\n\na = 두배(4)\nprint(a)');
+    expect(t.finished).toBe(true);
+    expect(t.output).toEqual(['8']);
+    const notes = t.steps.map((s) => s.note);
+    expect(notes).toContain('두배(4) 호출 → x = 4');
+    expect(notes).toContain('반환 → 8');
+    const inside = t.steps.find((s) => s.note.startsWith('y = x * 2'))!;
+    expect(inside.changed).toEqual(['두배:y']);
+    expect(Object.fromEntries(inside.vars)).toEqual({ '두배:x': '4', '두배:y': '8' });
+  });
+
+  it('재귀 함수', () => {
+    const t = run('def f(n):\n    if n <= 1:\n        return 1\n    return n * f(n - 1)\n\nprint(f(5))');
+    expect(t.output).toEqual(['120']);
+  });
+
+  it('끝나지 않는 재귀는 멈춘다', () => {
+    const t = run('def f(n):\n    return f(n + 1)\n\nprint(f(1))');
+    expect(t.steps[t.steps.length - 1].error).toContain('너무 깊이');
+  });
+
+  it('인자 개수가 다르면 알려 준다', () => {
+    const t = run('def f(a, b):\n    return a + b\n\nprint(f(1))');
+    expect(t.steps[t.steps.length - 1].error).toContain('값 2개');
+  });
+
+  it('함수 안에서 바깥 변수를 읽을 수 있다', () => {
+    const t = run('def f():\n    return k + 1\n\nk = 10\nprint(f())');
+    expect(t.output).toEqual(['11']);
+  });
+});

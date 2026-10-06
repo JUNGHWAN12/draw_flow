@@ -39,6 +39,12 @@ function lines(stmts: Stmt[], depth: number): string[] {
       case 'forEach':
         out.push(`${pad}for ${s.variable} in ${s.iterable}:`, ...block(s.body));
         break;
+      case 'def':
+        out.push(`${pad}def ${s.name}(${s.params.join(', ')}):`, ...block(s.body), '');
+        break;
+      case 'return':
+        out.push(pad + (s.value ? `return ${s.value}` : 'return'));
+        break;
       default:
         out.push(pad + s.type);
     }

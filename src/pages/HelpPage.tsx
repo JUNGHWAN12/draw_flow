@@ -13,6 +13,9 @@ const SYNTAX: [string, string, string][] = [
   ['횟수 반복', 'for i in range(1, n + 1):', '처리(i = 1) → 판단(i <= n) → … → 처리(i = i + 1)'],
   ['목록 반복', 'for x in 점수:', '처리(k = 0) → 판단(k < len(점수)) → 처리(x = 점수[k]) …'],
   ['반복 제어', 'break  /  continue', '화살표만 (반복 밖으로 / 다음 회차로)'],
+  ['함수 만들기', 'def 두배(x):', '따로 된 순서도 — 터미널 "두배(x)"에서 시작'],
+  ['값 돌려주기', 'return x * 2', '터미널 "반환 x * 2" (함수가 끝남)'],
+  ['함수 부르기', 'y = 두배(3)', '처리 — y = 두배(3)'],
   ['빈 블록', 'pass', '표시 안 함'],
   ['주석', '# 설명', '표시 안 함'],
 ];
@@ -58,7 +61,11 @@ export function HelpPage({ onOpenExample }: Props) {
           </li>
           <li>변수 이름과 문자열에 한글을 쓸 수 있습니다.</li>
           <li>
-            <code>def</code>, <code>class</code>, <code>try</code>, <code>import</code> 등은 아직 지원하지 않습니다.
+            <code>def</code>로 만든 함수는 본 순서도 오른쪽에 따로 그려집니다. 함수는 맨 바깥에서만 만들 수 있고, 매개변수
+            기본값은 쓸 수 없습니다.
+          </li>
+          <li>
+            <code>class</code>, <code>try</code>, <code>import</code> 등은 아직 지원하지 않습니다.
           </li>
         </ul>
         <table>

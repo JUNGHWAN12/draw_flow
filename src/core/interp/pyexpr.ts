@@ -545,8 +545,12 @@ export function parseExpr(src: string): Expr {
 
 export interface Env {
   vars: Map<string, PyValue>;
+  /** 함수 안에서 읽을 수 있는 바깥(전역) 변수 */
+  globals?: Map<string, PyValue>;
   /** input()이 불릴 때 다음 입력값을 돌려준다 */
   readInput: () => string;
+  /** 순서도로 그린 사용자 함수 부르기 (없으면 undefined를 돌려준다) */
+  callUser?: (name: string, args: PyValue[]) => PyValue | undefined;
 }
 
 type Builtin = (args: PyValue[], env: Env) => PyValue;
@@ -690,11 +694,10 @@ export function evaluate(e: Expr, env: Env): PyValue {
     case 'fstr':
       return e.parts.map((p) => (typeof p === 'string' ? p : str(evaluate(p, env)))).join('');
     case 'name': {
-      if (!env.vars.has(e.id)) {
-        if (e.id in BUILTINS) throw new PyError(`${e.id}은(는) 함수입니다. ${e.id}( … ) 처럼 괄호와 함께 쓰세요.`);
-        throw new PyError(`변수 '${e.id}'에 아직 값이 없습니다.`);
-      }
-      return env.vars.get(e.id)!;
+      if (env.vars.has(e.id)) return env.vars.get(e.id)!;
+      if (env.globals?.has(e.id)) return env.globals.get(e.id)!;
+      if (e.id in BUILTINS) throw new PyError(`${e.id}은(는) 함수입니다. ${e.id}( … ) 처럼 괄호와 함께 쓰세요.`);
+      throw new PyError(`변수 '${e.id}'에 아직 값이 없습니다.`);
     }
     case 'list':
       return e.items.map((x) => evaluate(x, env));
@@ -731,6 +734,8 @@ export function evaluate(e: Expr, env: Env): PyValue {
     case 'call': {
       const args = e.args.map((x) => evaluate(x, env));
       if (e.f.k === 'name') {
+        const user = env.callUser?.(e.f.id, args);
+        if (user !== undefined) return user;
         if (e.f.id === 'print') throw new PyError("print는 '출력:' 도형으로 표현하세요.");
         const fn = BUILTINS[e.f.id];
         if (!fn || env.vars.has(e.f.id)) throw new PyError(`'${e.f.id}' 함수는 지원하지 않습니다.`);

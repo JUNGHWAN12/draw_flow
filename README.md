@@ -36,8 +36,9 @@ else:
     print("작다")
 ```
 
-`input`, `print`, 대입(`=`, `+=` …), `if/elif/else`, `while`, `for … in range(…)`, `for x in 목록`, `break`, `continue`, `pass`, 주석.
-`def`, `class`, `try`, `import` 등은 아직 지원하지 않습니다.
+`input`, `print`, 대입(`=`, `+=` …), `if/elif/else`, `while`, `for … in range(…)`, `for x in 목록`, `break`, `continue`, `pass`, 주석,
+`def` / `return` (함수마다 따로 된 순서도: 터미널 `이름(매개변수)` → … → 터미널 `반환 값`).
+`class`, `try`, `import` 등은 아직 지원하지 않습니다.
 
 ## 개발
 

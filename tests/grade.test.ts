@@ -38,6 +38,13 @@ describe('채점', () => {
     expect(r.items.some((i) => i.text.includes('실행 중 오류'))).toBe(true);
   });
 
+  it('함수를 쓰지 않으면 함수 개수가 다르다고 알려 준다', () => {
+    const answer = 'def 두배(x):\n    return x * 2\n\nn = int(input())\nprint(두배(n))\n';
+    const r = grade(ast(answer), ast('n = int(input())\nprint(n * 2)\n'), [['3']]);
+    expect(r.verdict).toBe('partial');
+    expect(r.items.find((i) => i.text.startsWith('함수'))).toMatchObject({ ok: false, text: '함수 0개 (정답 1개)' });
+  });
+
   it('구조 요약', () => {
     expect(signature(ast('x = input()\nif x:\n    print(1)\nelse:\n    print(2)\nwhile x:\n    break'))).toBe(
       'I C1[O|O] L[B]',

@@ -11,8 +11,6 @@ interface Line {
 }
 
 const UNSUPPORTED: Record<string, string> = {
-  def: 'def(함수 정의)',
-  return: 'return',
   class: 'class',
   try: 'try',
   except: 'except',
@@ -95,6 +93,7 @@ function keywordOf(text: string): string {
 class Parser {
   private i = 0;
   private loopDepth = 0;
+  private funcDepth = 0;
   readonly errors: ParseError[];
   private readonly lines: Line[];
 
@@ -208,6 +207,19 @@ class Parser {
         return this.parseWhile(l);
       case 'for':
         return this.parseFor(l);
+      case 'def':
+        return this.parseDef(l);
+      case 'return': {
+        if (this.funcDepth === 0) {
+          this.error(l.line, 'return은 함수(def) 안에서만 쓸 수 있습니다.');
+          return null;
+        }
+        if (this.lines[this.i] && this.lines[this.i].indent > l.indent) {
+          this.error(this.lines[this.i].line, '들여쓰기가 맞지 않습니다. 위 줄과 같은 칸에서 시작하세요.');
+          this.skipBody(l);
+        }
+        return { type: 'return', value: l.text.slice(6).trim(), line: l.line };
+      }
       case 'break':
       case 'continue':
       case 'pass':
@@ -234,7 +246,7 @@ class Parser {
 
     if (this.lines[this.i] && this.lines[this.i].indent > l.indent) {
       if (l.text.endsWith(':')) {
-        this.error(l.line, '알 수 없는 블록입니다. if, elif, else, while, for 만 사용할 수 있습니다.');
+        this.error(l.line, '알 수 없는 블록입니다. if, elif, else, while, for, def 만 사용할 수 있습니다.');
       } else {
         this.error(this.lines[this.i].line, '들여쓰기가 맞지 않습니다. 위 줄과 같은 칸에서 시작하세요.');
       }
@@ -338,6 +350,39 @@ class Parser {
     }
     if (!ok) return null;
     return { type: 'if', branches, elseBody, line: l.line };
+  }
+
+  private parseDef(l: Line): Stmt | null {
+    const head = this.headerBody(l, 'def');
+    if (head === null) {
+      this.skipBody(l);
+      return null;
+    }
+    if (l.indent > 0 || this.funcDepth > 0) {
+      this.error(l.line, '함수(def)는 맨 바깥(들여쓰기 없이)에서만 만들 수 있습니다.');
+      this.skipBody(l);
+      return null;
+    }
+    const m = head.match(/^([\p{L}_][\p{L}\p{N}_]*)\s*\((.*)\)$/su);
+    if (!m) {
+      this.error(l.line, '함수는 "def 이름(매개변수):" 형식으로 만드세요.');
+      this.skipBody(l);
+      return null;
+    }
+    const params = m[2].trim() ? splitTopLevel(m[2]) : [];
+    const bad = params.find((p) => !IDENT.test(p));
+    if (bad !== undefined) {
+      this.error(l.line, `'${bad}'은(는) 매개변수로 쓸 수 없습니다. (기본값·*args는 지원하지 않습니다)`);
+      this.skipBody(l);
+      return null;
+    }
+    this.funcDepth++;
+    const saved = this.loopDepth;
+    this.loopDepth = 0;
+    const body = this.parseBody(l, 'def');
+    this.loopDepth = saved;
+    this.funcDepth--;
+    return { type: 'def', name: m[1], params, body, line: l.line };
   }
 
   private parseWhile(l: Line): Stmt | null {

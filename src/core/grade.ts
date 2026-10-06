@@ -18,7 +18,7 @@ export interface GradeResult {
   items: GradeItem[];
 }
 
-/** 구조 요약 글자: P(처리) I(입력) O(출력) L[…](반복) C2[…|…](조건 갈래 수) B(break) N(continue) */
+/** 구조 요약 글자: P(처리) I(입력) O(출력) L[…](반복) C2[…|…](조건 갈래 수) B(break) N(continue) R(return) D2[…](매개변수 2개 함수) */
 export function signature(stmts: Stmt[]): string {
   return stmts
     .map((s): string => {
@@ -40,6 +40,10 @@ export function signature(stmts: Stmt[]): string {
           return 'N';
         case 'pass':
           return '';
+        case 'return':
+          return 'R';
+        case 'def':
+          return `D${s.params.length}[${signature(s.body)}]`;
       }
     })
     .filter(Boolean)
@@ -53,7 +57,8 @@ function count(stmts: Stmt[], pick: (s: Stmt) => boolean): number {
     if (s.type === 'if') {
       for (const b of s.branches) n += count(b.body, pick);
       n += count(s.elseBody ?? [], pick);
-    } else if (s.type === 'while' || s.type === 'forRange' || s.type === 'forEach') n += count(s.body, pick);
+    } else if (s.type === 'while' || s.type === 'forRange' || s.type === 'forEach' || s.type === 'def')
+      n += count(s.body, pick);
   }
   return n;
 }
@@ -83,6 +88,9 @@ export function grade(answerIn: Stmt[], studentIn: Stmt[], tests: string[][]): G
   const [ia, is] = [count(answer, isIf), count(student, isIf)];
   items.push({ ok: la === ls, text: `반복 ${ls}개 (정답 ${la}개)` });
   items.push({ ok: ia === is, text: `조건 ${is}개 (정답 ${ia}개)` });
+  const isDef = (s: Stmt) => s.type === 'def';
+  const [da, ds] = [count(answer, isDef), count(student, isDef)];
+  if (da || ds) items.push({ ok: da === ds, text: `함수 ${ds}개 (정답 ${da}개)` });
   const ca = shapeCounts(answer);
   const cs = shapeCounts(student);
   items.push({

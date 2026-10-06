@@ -88,6 +88,26 @@ while True:
 `,
   },
   {
+    id: 'function',
+    title: '함수 (최댓값, 팩토리얼)',
+    code: `def 큰수(a, b):
+    if a > b:
+        return a
+    return b
+
+def 팩토리얼(n):
+    결과 = 1
+    for i in range(1, n + 1):
+        결과 = 결과 * i
+    return 결과
+
+x = int(input())
+y = int(input())
+print(큰수(x, y))
+print(팩토리얼(5))
+`,
+  },
+  {
     id: 'bubble',
     title: '버블 정렬',
     code: `a = [5, 3, 8, 1, 4]

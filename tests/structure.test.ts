@@ -116,3 +116,26 @@ describe('negate', () => {
     expect(negate('not (ok)')).toBe('ok');
   });
 });
+
+describe('함수 왕복 변환', () => {
+  it.each([
+    ['값을 돌려주는 함수', 'def 두배(x):\n    return x * 2\n\nprint(두배(3))\n'],
+    [
+      '조기 반환',
+      'def 부호(n):\n    if n < 0:\n        return "음수"\n    if n == 0:\n        return "영"\n    return "양수"\n\nprint(부호(-2))\n',
+    ],
+    ['반복 안의 반환', 'def 찾기(a, x):\n    for v in a:\n        if v == x:\n            return True\n    return False\n\nprint(찾기([1, 2], 2))\n'],
+    ['값 없는 함수', 'def 인사(이름):\n    print("안녕", 이름)\n\n인사("민수")\n'],
+  ])('%s', (_, code) => {
+    expect(roundTrip(code)).toBe(normalize(code));
+  });
+
+  it('함수 순서도가 반환 없이 끝나면 안내한다', () => {
+    const g = buildFlowchart(parse('def f():\n    pass\n\nf()').body);
+    // '반환' 터미널을 '끝'으로 바꿔 본다
+    const ret = g.nodes.find((n) => n.label === '반환')!;
+    ret.label = '끝';
+    const r = graphToAst(g);
+    expect(!r.ok && r.issues[0].message).toContain("'반환' 터미널로 끝나야");
+  });
+});

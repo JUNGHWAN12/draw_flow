@@ -92,7 +92,7 @@ describe('parse — 오류 메시지', () => {
   });
 
   it('미지원 구문', () => {
-    expect(firstError('def f():\n    pass').message).toContain('아직 지원하지 않습니다');
+    expect(firstError('class A:\n    pass').message).toContain('아직 지원하지 않습니다');
   });
 
   it('반복문 밖의 break', () => {
@@ -114,5 +114,30 @@ describe('parse — 오류 메시지', () => {
   it('오류가 여러 개면 모두 알려 준다', () => {
     const r = parse('if a\n    pass\nx = (1\nelse:\n    pass');
     expect(r.errors.map((e) => e.line)).toEqual([1, 3, 4]);
+  });
+});
+
+describe('parse — 함수', () => {
+  it('def와 return', () => {
+    const { body, errors } = parse('def 합(a, b):\n    c = a + b\n    return c\n\nprint(합(1, 2))');
+    expect(errors).toEqual([]);
+    expect(body[0]).toMatchObject({ type: 'def', name: '합', params: ['a', 'b'] });
+    expect(body[0].type === 'def' && body[0].body[1]).toEqual({ type: 'return', value: 'c', line: 3 });
+  });
+
+  it('함수 밖의 return', () => {
+    expect(parse('return 1').errors[0].message).toContain('함수(def) 안에서만');
+  });
+
+  it('안쪽에 만든 함수', () => {
+    expect(parse('if True:\n    def f():\n        pass').errors[0].message).toContain('맨 바깥');
+  });
+
+  it('기본값 매개변수는 지원하지 않는다', () => {
+    expect(parse('def f(a=1):\n    pass').errors[0].message).toContain('기본값');
+  });
+
+  it('함수 안의 break는 반복문 안에서만', () => {
+    expect(parse('for i in range(3):\n    pass\ndef f():\n    break').errors[0].message).toContain('반복문');
   });
 });

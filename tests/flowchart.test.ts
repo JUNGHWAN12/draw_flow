@@ -48,14 +48,16 @@ function checkGeometry(g: FlowGraph) {
 /** 흐름이 올바른지: 판단은 예/아니오 2갈래, 시작에서 끝까지 도달 가능 */
 function checkFlow(g: FlowGraph) {
   const out = (id: string) => g.edges.filter((e) => e.source === id);
+  const isEnd = (n: FlowNode) => n.kind === 'terminal' && (n.label === '끝' || n.label.startsWith('반환'));
   for (const n of g.nodes) {
     if (n.kind === 'decision') expect(out(n.id).map((e) => e.label).sort()).toEqual(['아니오', '예']);
-    else if (n.label !== '끝') expect(out(n.id)).toHaveLength(1);
+    else if (isEnd(n)) expect(out(n.id)).toHaveLength(0);
+    else expect(out(n.id)).toHaveLength(1);
   }
-  const start = g.nodes.find((n) => n.label === '시작')!;
+  const starts = g.nodes.filter((n) => n.kind === 'terminal' && !g.edges.some((e) => e.target === n.id));
   const end = g.nodes.find((n) => n.label === '끝')!;
-  const seen = new Set([start.id]);
-  const stack = [start.id];
+  const seen = new Set(starts.map((n) => n.id));
+  const stack = starts.map((n) => n.id);
   while (stack.length) for (const e of out(stack.pop()!)) if (!seen.has(e.target)) seen.add(e.target), stack.push(e.target);
   expect(seen.has(end.id)).toBe(true);
   expect(seen.size).toBe(g.nodes.length);
@@ -121,6 +123,27 @@ describe('buildFlowchart', () => {
     const g = chart('');
     expect(g.nodes.map((n) => n.label)).toEqual(['시작', '끝']);
     expect(g.edges).toHaveLength(1);
+  });
+});
+
+describe('함수', () => {
+  const SRC = 'def 두배(x):\n    return x * 2\n\ndef 부호(n):\n    if n < 0:\n        return "음수"\n    print(n)\n\nprint(두배(3))\n';
+
+  it('함수마다 따로 된 순서도를 본 순서도 오른쪽에 그린다', () => {
+    const g = chart(SRC);
+    checkGeometry(g);
+    checkFlow(g);
+    const labels = g.nodes.filter((n) => n.kind === 'terminal').map((n) => n.label);
+    expect(labels).toEqual(expect.arrayContaining(['시작', '끝', '두배(x)', '반환 x * 2', '부호(n)', '반환 "음수"', '반환']));
+    const main = g.nodes.find((n) => n.label === '시작')!;
+    const f = g.nodes.find((n) => n.label === '두배(x)')!;
+    expect(f.x).toBeGreaterThan(main.x + main.width);
+  });
+
+  it('반환 터미널에서는 화살표가 나가지 않는다', () => {
+    const g = chart(SRC);
+    const ret = g.nodes.find((n) => n.label === '반환 "음수"')!;
+    expect(g.edges.filter((e) => e.source === ret.id)).toHaveLength(0);
   });
 });
 
