@@ -33,8 +33,8 @@
 | UI 프레임워크 | React 18, TypeScript |
 | 빌드 | Vite |
 | 순서도 캔버스/편집기 | `@xyflow/react` (React Flow) |
-| 자동 배치 | `elkjs` (대안: `dagre`) |
-| 코드 입력창 | CodeMirror 6 (줄 번호, 오류 표시) |
+| 자동 배치 | 직접 구현한 **구조적 배치** (코드 구조를 그대로 따라 배치, 5.1 참고) |
+| 코드 입력창 | textarea 기반 직접 구현 (줄 번호, 오류 줄 표시, 자동 들여쓰기) |
 | 이미지 내보내기 | `html-to-image` |
 | 테스트 | Vitest |
 
@@ -201,21 +201,28 @@ print(합)
 
 ```
 의사코드 텍스트
-   │  ① 줄 분석 (lexer)             — 줄 번호, INDENT/DEDENT, 문장 종류 판별
-   ▼
-줄 단위 토큰 목록
-   │  ② 구문 분석 (parser)          — 콜론·블록 구조 검사, if/elif/else 묶기, 오류 수집
+   │  ① 줄 분석 + 구문 분석 (parser.ts) — 들여쓰기, 콜론·블록 구조 검사, if/elif/else 묶기, 오류 수집
    ▼
 AST (구문 트리)
-   │  ③ 그래프 생성 (graph builder) — 도형(node)·연결선(edge) 생성
+   │  ② 순서도 생성 + 배치 (flowchart.ts) — 도형·화살표·좌표를 한 번에 계산
    ▼
-순서도 그래프 { nodes, edges }
-   │  ④ 자동 배치 (elkjs)            — 좌표 계산
+순서도 { nodes, edges(꺾은선 경로 포함) }
+   │
    ▼
-React Flow 렌더링
+React Flow 렌더링 / PNG·SVG·.drawio 내보내기
 ```
 
 각 단계는 React와 분리된 순수 TypeScript 함수로 작성하여 단위 테스트한다.
+
+**구조적 배치 규칙** (구현 중 elkjs 계층 배치를 시험했으나, 중첩 반복에서 선이 얽히고 `끝`이 중간에 놓이는 문제가 있어 교체)
+
+- 차례대로 실행되는 문장은 가운데 세로줄에 위→아래로 쌓는다.
+- 판단의 `예`는 아래, `아니오`는 오른쪽. `elif`는 `아니오` 쪽에 이어지는 판단으로 그린다.
+- 반복으로 되돌아가는 화살표는 왼쪽 통로로 올라가 판단의 **왼쪽**으로 들어간다.
+- 반복을 빠져나가는 화살표(`아니오`, `break`)는 오른쪽 통로로 내려간다.
+- `if 조건: … break` 처럼 `예` 쪽이 반복을 빠져나가기만 하면, `예`를 오른쪽으로 내고 `아니오`가 아래로 이어진다.
+- `break`/`continue` 선은 도형과 겹치지 않는 가로선을 찾아 통로로 보낸다.
+- 테스트로 모든 예제에서 "도형 겹침 없음, 화살표는 연결점에서 시작·끝, 직각선, 판단은 예/아니오 2갈래, 모든 도형 도달 가능"을 검사한다.
 
 ### 5.2 핵심 데이터 형식
 
@@ -250,37 +257,41 @@ interface FlowDocument {
 
 ```
 draw_flow/
-├─ .github/workflows/deploy.yml   # GitHub Pages 자동 배포
-├─ public/
+├─ .github/workflows/
+│  ├─ ci.yml                      # PR·브랜치: 타입 검사 + 테스트 + 빌드
+│  └─ deploy.yml                  # main: 테스트 후 GitHub Pages 배포
+├─ public/favicon.svg
 ├─ src/
 │  ├─ main.tsx
-│  ├─ App.tsx                     # 탭/라우팅 (HashRouter)
+│  ├─ App.tsx                     # 탭 + 해시 주소(#/convert, #/editor, #/help)
 │  ├─ pages/
 │  │  ├─ ConverterPage.tsx        # 의사코드 → 순서도
 │  │  ├─ EditorPage.tsx           # 자유 편집기
 │  │  └─ HelpPage.tsx             # 문법 도움말·예제
 │  ├─ core/                       # React와 무관한 순수 로직
-│  │  ├─ statements.ts            # 지원 구문 패턴 정의
-│  │  ├─ lexer.ts
-│  │  ├─ parser.ts
-│  │  ├─ graphBuilder.ts
-│  │  ├─ layout.ts
-│  │  └─ errors.ts
+│  │  ├─ ast.ts                   # 구문 트리 형식
+│  │  ├─ parser.ts                # 파이썬식 의사코드 분석, 한국어 오류
+│  │  ├─ text.ts                  # 문자열·괄호를 고려한 텍스트 도우미
+│  │  ├─ flowchart.ts             # 순서도 생성 + 구조적 배치
+│  │  ├─ labels.ts                # 도형 글자 (range 조건, ← 표기)
+│  │  ├─ shapes.ts                # 도형 크기
+│  │  └─ types.ts                 # 순서도 데이터 형식
 │  ├─ components/
-│  │  ├─ nodes/                   # 도형별 커스텀 노드
-│  │  ├─ Palette.tsx
-│  │  ├─ CodeEditor.tsx
-│  │  └─ Toolbar.tsx
+│  │  ├─ nodes/ShapeNodes.tsx     # 터미널·처리·판단 도형
+│  │  ├─ ArrowEdge.tsx            # 화살표 (예/아니오 라벨)
+│  │  ├─ CodeEditor.tsx           # 의사코드 입력창
+│  │  └─ flowTypes.ts             # React Flow ⇄ 순서도 변환
 │  ├─ io/
-│  │  ├─ storage.ts               # localStorage
-│  │  ├─ jsonFile.ts
-│  │  ├─ imageExport.ts
-│  │  └─ drawioExport.ts
-│  └─ examples/
-├─ tests/
+│  │  ├─ storage.ts               # localStorage 자동 저장
+│  │  ├─ files.ts                 # 파일 저장/열기, .json 형식
+│  │  ├─ imageExport.ts           # PNG·SVG
+│  │  └─ drawioExport.ts          # .drawio
+│  └─ examples/index.ts           # 수업 예제 8개
+├─ tests/                         # parser / flowchart / 예제 파이썬 문법 검사
 ├─ index.html
 ├─ vite.config.ts                 # base: '/draw_flow/'
 ├─ package.json
+├─ README.md
 └─ PLAN.md
 ```
 
@@ -297,11 +308,13 @@ draw_flow/
 
 ## 7. 일정 (안)
 
+**진행 상황 (2026-10-06):** 1~5주 차 범위(MVP)의 첫 구현 완료 — 의사코드 변환, 편집기, 저장/내보내기, 예제·도움말, CI·배포 설정, 단위 테스트 52개. 남은 일: GitHub Pages 활성화, 수업 시범 적용(6주 차).
+
 | 주차 | 작업 | 산출물 |
 |---|---|---|
 | 1주 | 프로젝트 생성, 배포 파이프라인, 기본 레이아웃 | 빈 화면이 GitHub Pages에 배포됨 |
 | 2주 | 파이썬식 lexer/parser + 단위 테스트 (대입·입출력·if/elif/else) | 한국어 문법 오류 메시지 동작 |
-| 3주 | while/for/break/continue 처리, graphBuilder, elkjs 자동 배치 | 의사코드 → 순서도 변환 완성 |
+| 3주 | while/for/break/continue 처리, 순서도 생성 + 구조적 배치 | 의사코드 → 순서도 변환 완성 |
 | 4주 | 편집기 (팔레트, 연결, 편집, 실행 취소) | 자유 편집 가능 |
 | 5주 | 저장/불러오기, PNG·SVG·.drawio 내보내기, 예제·도움말 | MVP 완성 |
 | 6주 | 수업 시범 적용, 피드백 반영 | v1.0 |
@@ -318,7 +331,7 @@ draw_flow/
 
 | 위험 | 대응 |
 |---|---|
-| 중첩된 조건/반복의 순서도 배치가 지저분함 | elkjs 계층 배치 + 반복 되돌림 선 별도 경로 지정, 예제로 지속 점검 |
+| 중첩된 조건/반복의 순서도 배치가 지저분함 | 코드 구조를 따르는 구조적 배치로 해결, 예제 전체에 대해 겹침·연결 자동 테스트 |
 | 학생이 파이썬 전체 문법을 기대함 | 지원 범위를 도움말에 명시, 미지원 구문은 "아직 지원하지 않음"으로 안내 |
 | 들여쓰기 오류가 잦음 | 입력창에서 Tab → 공백 4칸 자동 변환, 콜론 뒤 Enter 시 자동 들여쓰기 |
 | 브라우저 데이터 삭제로 작업 손실 | 파일 저장 버튼 강조, 자동 저장 안내 |
@@ -327,7 +340,7 @@ draw_flow/
 ## 10. 결정이 필요한 사항
 
 - [x] 의사코드 표기법 → **파이썬 문법 기반** (4장)
-- [ ] 도형 라벨 표기: 파이썬 원문(`=`) vs 순서도 관례(`←`)
+- [x] 도형 라벨 표기 → 기본은 파이썬 원문(`=`), 화면에서 `←` 표기로 바꿀 수 있음
 - [x] 사용 도형 → **터미널·처리·판단·화살표 4가지만** (4.2), `for`는 초기화 + 판단 + 증가로 표현
 - [ ] 저장소 공개 여부 (Pages 무료 사용 조건)
 - [ ] 2단계(로그인·과제 제출) 진행 여부와 시기
