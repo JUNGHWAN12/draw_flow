@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 사용 방법 (도움말 · 예제)
+    url: https://junghwan12.github.io/draw_flow/#/help
+    about: 문법과 사용법은 앱의 '도움말 · 예제' 화면에 정리되어 있습니다.

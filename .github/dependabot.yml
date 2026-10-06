@@ -1,0 +1,31 @@
+# 라이브러리 업데이트를 GitHub가 매달 확인해 PR(풀 리퀘스트)로 알려 준다.
+# PR이 열리면 CI(타입 검사 + 테스트 + 빌드)가 자동으로 돈다. 초록색(통과)이면 Merge, 빨간색이면 그대로 두고 확인.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    labels: [dependencies]
+    commit-message:
+      prefix: deps
+    groups:
+      # 작은 업데이트(버그 수정·기능 추가)는 PR 하나로 묶는다
+      minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      # 큰 버전 변경은 화면 확인이 필요하므로 자동 PR을 만들지 않는다 (MAINTENANCE.md 참고)
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    labels: [dependencies]
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']

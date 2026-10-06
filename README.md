@@ -4,6 +4,7 @@
 
 - 배포 주소: https://junghwan12.github.io/draw_flow/
 - 개발 계획: [PLAN.md](PLAN.md)
+- 유지보수 안내: [MAINTENANCE.md](MAINTENANCE.md)
 
 ## 기능
 

@@ -1,0 +1,59 @@
+name: 버그 제보
+description: 잘못 그려지거나, 실행·채점이 이상하거나, 화면이 깨지는 문제를 알려 주세요.
+title: '[버그] '
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        알려 주셔서 고맙습니다. 아래 내용을 적어 주시면 같은 상황을 다시 만들어 고칠 수 있습니다.
+        학생 이름 등 개인 정보는 적지 마세요.
+  - type: dropdown
+    id: screen
+    attributes:
+      label: 어느 화면에서 생겼나요?
+      options:
+        - 의사코드 → 순서도
+        - 순서도 편집기
+        - 단계별 실행
+        - 문제 (만들기 / 풀기 / 채점)
+        - 인쇄 / PDF / 내보내기
+        - 기타
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: 무엇이 이상했나요?
+      description: 기대한 결과와 실제 결과를 함께 적어 주세요.
+      placeholder: |
+        예) for 문 안에 break를 넣었더니 화살표가 도형을 가로질러 그려집니다.
+        기대: 화살표가 오른쪽으로 돌아서 나감 / 실제: 도형 위를 지나감
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: 의사코드 (있으면)
+      description: 문제가 생긴 의사코드를 그대로 붙여 넣어 주세요. 편집기에서 그린 순서도라면 '저장 (.json)' 파일을 이 칸 아래에 끌어다 놓아도 됩니다.
+      render: python
+  - type: textarea
+    id: steps
+    attributes:
+      label: 어떻게 하면 다시 생기나요?
+      placeholder: |
+        1. '예제 불러오기'에서 '구구단'을 고른다
+        2. '▶ 단계별 실행'을 누른다
+        3. ...
+  - type: input
+    id: browser
+    attributes:
+      label: 기기와 브라우저
+      placeholder: 예) 학교 PC Windows 11 + Chrome / 아이패드 9세대 + Safari / 웨일
+    validations:
+      required: true
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: 화면 캡처 (있으면)
+      description: 캡처 이미지를 이 칸에 끌어다 놓으세요.
