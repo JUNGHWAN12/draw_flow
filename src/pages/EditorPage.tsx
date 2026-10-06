@@ -18,17 +18,26 @@ import { nodeTypes } from '../components/nodes/ShapeNodes';
 import { edgeTypes } from '../components/ArrowEdge';
 import { ARROW_MARKER, fromRf, toRfEdges, toRfNodes, type ArrowEdge, type ShapeNode } from '../components/flowTypes';
 import { nodeSize } from '../core/shapes';
+import { graphToAst, type StructureIssue } from '../core/structure';
+import { toPseudocode } from '../core/codegen';
+import { buildFlowchart } from '../core/flowchart';
 import type { EdgeLabel, FlowDocument, NodeKind } from '../core/types';
 import { load, save } from '../io/storage';
 import { downloadDataUrl, downloadText, parseDocument, pickTextFile, safeFilename, toDocument } from '../io/files';
 import { exportImage } from '../io/imageExport';
 import { toDrawio } from '../io/drawioExport';
+import { printFlowchart } from '../io/print';
 
 interface Props {
   /** 의사코드 변환 화면에서 보낸 순서도 (보낼 때마다 새 객체) */
   incoming: FlowDocument | null;
   onIncomingConsumed: () => void;
+  /** 순서도에서 만든 의사코드를 변환 화면에서 열기 */
+  onOpenCode: (code: string) => void;
 }
+
+/** 역변환 결과 창 */
+type CodePanel = { code: string } | { issues: StructureIssue[]; forAlign: boolean };
 
 interface Snapshot {
   nodes: ShapeNode[];
@@ -55,7 +64,7 @@ function essence(s: Snapshot): string {
   ]);
 }
 
-function EditorInner({ incoming, onIncomingConsumed }: Props) {
+function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
   const initial = useMemo<Snapshot>(() => {
     const doc = load<FlowDocument | null>('editorDoc', null);
     return doc ? fromDoc(doc, true) : { nodes: [], edges: [] };
@@ -64,7 +73,8 @@ function EditorInner({ incoming, onIncomingConsumed }: Props) {
   const [edges, setEdges] = useState<ArrowEdge[]>(initial.edges);
   const [title, setTitle] = useState<string>(() => load('editorTitle', '내 순서도'));
   const flowRef = useRef<HTMLDivElement>(null);
-  const { screenToFlowPosition, fitView } = useReactFlow();
+  const { screenToFlowPosition, fitView, deleteElements } = useReactFlow<ShapeNode, ArrowEdge>();
+  const [panel, setPanel] = useState<CodePanel | null>(null);
 
   // ── 실행 취소 / 다시 실행 ──────────────────────────────
   const history = useRef<{ past: Snapshot[]; future: Snapshot[]; last: Snapshot; lastKey: string }>({
@@ -258,6 +268,47 @@ function EditorInner({ incoming, onIncomingConsumed }: Props) {
   const graph = () => fromRf(nodes, edges);
   const h = history.current;
 
+  // ── 역변환 / 자동 정렬 ─────────────────────────────────
+  const errorIds = useMemo(
+    () => new Set(panel && 'issues' in panel ? panel.issues.flatMap((i) => (i.nodeId ? [i.nodeId] : [])) : []),
+    [panel],
+  );
+  const shownNodes = useMemo(
+    () => (errorIds.size ? nodes.map((n) => (errorIds.has(n.id) ? { ...n, data: { ...n.data, error: true } } : n)) : nodes),
+    [nodes, errorIds],
+  );
+
+  const toCode = () => {
+    const r = graphToAst(graph());
+    setPanel(r.ok ? { code: toPseudocode(r.body) } : { issues: r.issues, forAlign: false });
+  };
+
+  const autoAlign = () => {
+    const r = graphToAst(graph());
+    if (!r.ok) {
+      setPanel({ issues: r.issues, forAlign: true });
+      return;
+    }
+    const arrowAssign = nodes.some((n) => n.data.label.includes('←'));
+    const g = buildFlowchart(r.body, { arrowAssign });
+    setNodes(toRfNodes(g.nodes, true));
+    setEdges(toRfEdges(g.edges));
+    setPanel(null);
+    requestAnimationFrame(() => fitView({ padding: 0.1, maxZoom: 1.2 }));
+  };
+
+  // ── 선택한 도형/화살표 다루기 (터치 화면에서도 쓸 수 있게 버튼으로) ──
+  const selNodes = nodes.filter((n) => n.selected);
+  const selEdges = edges.filter((e) => e.selected);
+  const cycleLabel = (id: string) =>
+    setEdges((es) =>
+      es.map((e) => {
+        if (e.id !== id) return e;
+        const i = LABEL_CYCLE.indexOf(e.data?.label);
+        return { ...e, data: { ...e.data, label: LABEL_CYCLE[(i + 1) % LABEL_CYCLE.length] } };
+      }),
+    );
+
   const exportAs = async (format: 'png' | 'svg') => {
     if (!flowRef.current) return;
     try {
@@ -317,6 +368,13 @@ function EditorInner({ incoming, onIncomingConsumed }: Props) {
         <button onClick={redo} disabled={!h.future.length} title="Ctrl+Y">
           ↷ 다시 실행
         </button>
+        <span className="sep" />
+        <button onClick={autoAlign} disabled={!nodes.length} title="순서도를 변환 화면과 같은 모양으로 가지런히 정리합니다">
+          자동 정렬
+        </button>
+        <button onClick={toCode} disabled={!nodes.length} title="그린 순서도를 파이썬식 의사코드로 바꿉니다">
+          코드로 변환
+        </button>
         <span className="spacer" />
         <button disabled={!nodes.length} onClick={() => exportAs('png')}>
           PNG
@@ -329,6 +387,20 @@ function EditorInner({ incoming, onIncomingConsumed }: Props) {
           onClick={() => downloadText(toDrawio(graph(), title), `${safeFilename(title)}.drawio`, 'application/xml')}
         >
           draw.io
+        </button>
+        <button
+          disabled={!nodes.length}
+          title="A4 한 장으로 인쇄합니다. 인쇄 창에서 'PDF로 저장'을 고르면 PDF가 됩니다."
+          onClick={async () => {
+            if (!flowRef.current) return;
+            try {
+              printFlowchart({ title, image: await exportImage(flowRef.current, nodes, 'png') });
+            } catch (e) {
+              alert((e as Error).message);
+            }
+          }}
+        >
+          인쇄 / PDF
         </button>
       </div>
 
@@ -358,28 +430,21 @@ function EditorInner({ incoming, onIncomingConsumed }: Props) {
             <li>도형 가장자리의 점을 끌어 다른 도형에 놓으면 화살표가 생깁니다.</li>
             <li>도형을 더블클릭하면 글자를 고칠 수 있습니다.</li>
             <li>화살표를 더블클릭하면 예 → 아니오 → 없음 순으로 바뀝니다.</li>
-            <li>선택 후 Delete 키로 지웁니다.</li>
+            <li>선택 후 Delete 키로 지웁니다. (태블릿: 선택하면 위쪽에 나오는 버튼 사용)</li>
+            <li>'자동 정렬'은 순서도를 가지런히, '코드로 변환'은 의사코드로 바꿔 줍니다.</li>
           </ul>
         </aside>
 
         <div className="flow-canvas" ref={flowRef} onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
           <ReactFlow
-            nodes={nodes}
+            nodes={shownNodes}
             edges={edges}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onEdgeDoubleClick={(_, edge) =>
-              setEdges((es) =>
-                es.map((e) => {
-                  if (e.id !== edge.id) return e;
-                  const i = LABEL_CYCLE.indexOf(e.data?.label);
-                  return { ...e, data: { ...e.data, label: LABEL_CYCLE[(i + 1) % LABEL_CYCLE.length] } };
-                }),
-              )
-            }
+            onEdgeDoubleClick={(_, edge) => cycleLabel(edge.id)}
             connectionMode={ConnectionMode.Loose}
             deleteKeyCode={['Delete', 'Backspace']}
             snapToGrid
@@ -394,6 +459,62 @@ function EditorInner({ incoming, onIncomingConsumed }: Props) {
             <Controls />
             <MiniMap pannable zoomable />
           </ReactFlow>
+          {(selNodes.length > 0 || selEdges.length > 0) && (
+            <div className="selection-bar">
+              {selNodes.length === 1 && (
+                <button
+                  onClick={() =>
+                    setNodes((ns) =>
+                      ns.map((n) => (n.selected ? { ...n, data: { ...n.data, editRequest: Date.now() } } : n)),
+                    )
+                  }
+                >
+                  ✎ 글자 고치기
+                </button>
+              )}
+              {selEdges.length === 1 && selNodes.length === 0 && (
+                <button onClick={() => cycleLabel(selEdges[0].id)}>
+                  라벨: {selEdges[0].data?.label ?? '없음'} → 바꾸기
+                </button>
+              )}
+              <button className="danger" onClick={() => deleteElements({ nodes: selNodes, edges: selEdges })}>
+                🗑 삭제
+              </button>
+            </div>
+          )}
+          {panel && (
+            <aside className="code-drawer" aria-label="코드로 변환 결과">
+              <header>
+                <b>{'code' in panel ? '의사코드' : panel.forAlign ? '자동 정렬할 수 없습니다' : '코드로 바꿀 수 없습니다'}</b>
+                <button className="close" onClick={() => setPanel(null)} aria-label="닫기">
+                  ✕
+                </button>
+              </header>
+              {'code' in panel ? (
+                <>
+                  <pre>{panel.code}</pre>
+                  <div className="drawer-actions">
+                    <button onClick={() => navigator.clipboard?.writeText(panel.code)}>복사</button>
+                    <button className="primary" onClick={() => onOpenCode(panel.code)}>
+                      의사코드 화면에서 열기 →
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="drawer-note">빨간색으로 표시된 도형을 확인해 보세요.</p>
+                  <ul>
+                    {panel.issues.map((i, k) => (
+                      <li key={k}>{i.message}</li>
+                    ))}
+                  </ul>
+                  <div className="drawer-actions">
+                    <button onClick={panel.forAlign ? autoAlign : toCode}>다시 확인</button>
+                  </div>
+                </>
+              )}
+            </aside>
+          )}
           {!nodes.length && (
             <div className="empty-hint">
               왼쪽에서 도형을 골라 순서도를 그려 보세요.

@@ -23,6 +23,7 @@ export interface BuildOptions {
 const GAP = 36; // 위아래 도형 사이 간격
 const COL_GAP = 36; // 나란한 갈래 사이 간격
 const LANE = 24; // 통로(우회하는 화살표)와 도형 사이 간격
+const LABEL_ROOM = 56; // 판단 오른쪽 꼭짓점에서 첫 세로선까지 (아니오/예 라벨 자리)
 const PAD = 24; // 그림 바깥 여백
 
 interface End {
@@ -291,7 +292,7 @@ class Builder {
       if (yes.empty) {
         this.absorb(box, shift(yes, w / 2, h / 2), [yesR]);
       } else {
-        const nx = w / 2 + COL_GAP - Math.min(0, yes.left);
+        const nx = Math.max(w / 2 + COL_GAP - Math.min(0, yes.left), w / 2 + LABEL_ROOM);
         const yN = h / 2 + GAP;
         routeTo(yesR, { x: nx, y: yN }, yN);
         const placed = shift(yes, nx, yN);
@@ -313,7 +314,7 @@ class Builder {
 
     const rightOfYes = Math.max(w / 2, yes.right);
     if (no) {
-      const nx = rightOfYes + COL_GAP - Math.min(0, no.left);
+      const nx = Math.max(rightOfYes + COL_GAP - Math.min(0, no.left), w / 2 + LABEL_ROOM);
       const yN = h / 2 + GAP;
       routeTo(noW, { x: nx, y: yN }, yN);
       const placed = shift(no, nx, yN);
@@ -321,7 +322,7 @@ class Builder {
       box.right = placed.right;
       box.height = Math.max(box.height, yN + no.height);
     } else {
-      const lane = rightOfYes + LANE;
+      const lane = Math.max(rightOfYes + LANE, w / 2 + LABEL_ROOM);
       push(noW, { x: lane, y: h / 2 });
       box.out.push(noW);
       box.right = lane;
@@ -381,7 +382,7 @@ class Builder {
 
     // 통로 위치: 왼쪽 = 되돌아가는 선, 오른쪽 = continue 선, 그 바깥 = 반복을 빠져나가는 선
     const laneL = Math.min(-w / 2, body.left, incr?.left ?? 0, init?.left ?? 0) - LANE;
-    const laneC = Math.max(w / 2, body.right, incr?.right ?? 0, init?.right ?? 0) + LANE;
+    const laneC = Math.max(Math.max(body.right, incr?.right ?? 0, init?.right ?? 0) + LANE, w / 2 + LABEL_ROOM);
     const laneR = laneC + (inner.cont.length ? LANE : 0);
 
     const obstacles = [...box.nodes, ...(incrBox?.nodes ?? [])];

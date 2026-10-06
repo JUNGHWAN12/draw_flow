@@ -144,3 +144,33 @@ describe('labels', () => {
     expect(toArrow('a <= b')).toBe('a <= b');
   });
 });
+
+describe('긴 글자', () => {
+  it('긴 처리·판단 글자는 도형을 여러 줄 높이로 키운다', () => {
+    const g = chart(`x = "${'가'.repeat(40)}"\nif ${'a > 0 and '.repeat(6)}b > 0:\n    pass`);
+    const p = g.nodes.find((n) => n.kind === 'process')!;
+    const d = g.nodes.find((n) => n.kind === 'decision')!;
+    expect(p.height).toBeGreaterThan(44);
+    expect(p.width).toBeLessThanOrEqual(340);
+    expect(d.height).toBeGreaterThan(72);
+    checkGeometry(g);
+  });
+
+  it('판단 오른쪽 라벨 자리에 다른 세로선이 지나가지 않는다', () => {
+    for (const ex of EXAMPLES) {
+      const g = chart(ex.code);
+      for (const d of g.nodes.filter((n) => n.kind === 'decision')) {
+        const tipX = d.x + d.width;
+        const y = d.y + d.height / 2;
+        for (const e of g.edges) {
+          const pts = e.points!;
+          for (let i = 1; i < pts.length; i++) {
+            const [a, b] = [pts[i - 1], pts[i]];
+            const vertical = a.x === b.x && Math.min(a.y, b.y) < y - 1 && Math.max(a.y, b.y) > y - 24;
+            if (vertical) expect(a.x <= tipX || a.x >= tipX + 50, `${ex.title}: ${d.label}`).toBe(true);
+          }
+        }
+      }
+    }
+  });
+});

@@ -9,7 +9,6 @@ interface Props {
 }
 
 const INDENT = '    ';
-const LINE_HEIGHT = 24;
 const PAD_TOP = 10;
 
 /** 브라우저 실행 취소(Ctrl+Z)가 유지되도록 execCommand로 글자를 넣는다 */
@@ -75,12 +74,13 @@ export function CodeEditor({ value, onChange, errorLines, highlightLine, onHover
     const el = ta.current;
     if (!el) return null;
     const y = clientY - el.getBoundingClientRect().top + el.scrollTop - PAD_TOP;
-    const n = Math.floor(y / LINE_HEIGHT) + 1;
+    const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 24;
+    const n = Math.floor(y / lineHeight) + 1;
     return n >= 1 && n <= lines.length ? n : null;
   };
 
   return (
-    <div className="code-editor" style={{ ['--lh' as string]: `${LINE_HEIGHT}px` }}>
+    <div className="code-editor">
       <div className="code-gutter" aria-hidden>
         <div style={{ transform: `translateY(${-scroll.top}px)` }}>
           {lines.map((_, i) => (

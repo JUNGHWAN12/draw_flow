@@ -32,6 +32,13 @@ function Label({ id, kind, data }: { id: string; kind: NodeKind; data: ShapeData
     if (editing) ref.current?.select();
   }, [editing]);
 
+  useEffect(() => {
+    if (data.editRequest && data.editable) {
+      setDraft(data.label);
+      setEditing(true);
+    }
+  }, [data.editRequest]);
+
   const commit = () => {
     setEditing(false);
     const label = draft.trim() || data.label;
@@ -77,12 +84,12 @@ function Label({ id, kind, data }: { id: string; kind: NodeKind; data: ShapeData
 }
 
 function classes(kind: string, p: NodeProps<ShapeNode>) {
-  return `shape shape-${kind}${p.data.highlight ? ' is-highlight' : ''}${p.selected ? ' is-selected' : ''}`;
+  return `shape shape-${kind}${p.data.highlight ? ' is-highlight' : ''}${p.data.error ? ' is-error' : ''}${p.selected ? ' is-selected' : ''}`;
 }
 
 export function TerminalNode(p: NodeProps<ShapeNode>) {
   return (
-    <div className={classes('terminal', p)}>
+    <div className={classes('terminal', p)} title={p.data.label}>
       <Handles />
       <Label id={p.id} kind="terminal" data={p.data} />
     </div>
@@ -91,7 +98,7 @@ export function TerminalNode(p: NodeProps<ShapeNode>) {
 
 export function ProcessNode(p: NodeProps<ShapeNode>) {
   return (
-    <div className={classes('process', p)}>
+    <div className={classes('process', p)} title={p.data.label}>
       <Handles />
       <Label id={p.id} kind="process" data={p.data} />
     </div>
@@ -100,15 +107,15 @@ export function ProcessNode(p: NodeProps<ShapeNode>) {
 
 export function DecisionNode(p: NodeProps<ShapeNode>) {
   return (
-    <div className={classes('decision', p)}>
+    <div className={classes('decision', p)} title={p.data.label}>
       <svg className="decision-bg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
         {/* 이미지 내보내기에서도 색이 유지되도록 CSS가 아닌 속성으로 색을 지정한다 */}
         <polygon
           points="50,1 99,50 50,99 1,50"
           vectorEffect="non-scaling-stroke"
           fill="#fef3c7"
-          stroke={p.selected ? '#2563eb' : '#b45309'}
-          strokeWidth={p.selected ? 3 : 2}
+          stroke={p.data.error ? '#dc2626' : p.selected ? '#2563eb' : '#b45309'}
+          strokeWidth={p.selected || p.data.error ? 3 : 2}
         />
       </svg>
       <Handles />

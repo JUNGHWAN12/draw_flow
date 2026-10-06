@@ -270,6 +270,7 @@ main {
 
 /* 코드 입력창 */
 .code-editor {
+  --lh: 24px;
   display: flex;
   flex: 1;
   min-height: 0;
@@ -391,7 +392,8 @@ main {
 .shape-label {
   position: relative;
   font-family: var(--mono);
-  line-height: 1.25;
+  line-height: 18px;
+  word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
@@ -684,4 +686,153 @@ main {
 /* 이미지 내보내기 중에는 선택 표시를 숨긴다 */
 .is-exporting .shape.is-selected {
   outline: none;
+}
+
+/* ── 역변환 결과 창 / 선택 도구 ─────────────── */
+.code-drawer {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  width: min(380px, calc(100% - 24px));
+  max-height: calc(100% - 24px);
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.15);
+  overflow: hidden;
+}
+
+.code-drawer header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.code-drawer .close {
+  height: 28px;
+  padding: 0 8px;
+}
+
+.code-drawer pre {
+  flex: 1;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.6;
+  background: #f8fafc;
+}
+
+.code-drawer ul {
+  margin: 0;
+  padding: 0 12px 0 30px;
+  overflow: auto;
+  color: var(--error);
+  line-height: 1.6;
+}
+
+.drawer-note {
+  margin: 10px 12px 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.drawer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.selection-bar {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+}
+
+button.danger:hover:not(:disabled) {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.shape-terminal.is-error,
+.shape-process.is-error {
+  border-color: var(--error);
+  box-shadow: 0 0 0 3px var(--error-soft);
+}
+
+/* ── 터치 화면 (태블릿) ─────────────────────── */
+@media (hover: none), (pointer: coarse) {
+  .shape-handle {
+    width: 18px;
+    height: 18px;
+    opacity: 1;
+  }
+
+  .palette-item[draggable] {
+    cursor: pointer;
+  }
+
+  button,
+  select {
+    min-height: 40px;
+  }
+}
+
+.header-spacer {
+  flex: 1;
+}
+
+/* ── 크게 보기 (교실 프로젝터) ──────────────── */
+.projector {
+  --text: #000;
+  --line: #000;
+  --edge-w: 3px;
+  font-size: 18px;
+}
+
+.projector .code-editor {
+  --lh: 34px;
+  font-size: 23px;
+}
+
+.projector .code-gutter {
+  width: 56px;
+}
+
+.projector .shape-terminal,
+.projector .shape-process {
+  border-width: 3px;
+}
+
+.projector .shape-label {
+  font-weight: 600;
+}
+
+.projector .edge-label {
+  font-size: 16px;
+}
+
+.projector .status {
+  font-size: 18px;
+}
+
+.projector .react-flow__minimap {
+  display: none;
 }

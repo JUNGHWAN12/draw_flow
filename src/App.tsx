@@ -25,6 +25,9 @@ export function App() {
   const [route, setRoute] = useState<Route>(readRoute);
   const [code, setCode] = useState<string>(() => load('code', EXAMPLES[1].code));
   const [incoming, setIncoming] = useState<FlowDocument | null>(null);
+  const [projector, setProjector] = useState<boolean>(() => load('projector', false));
+
+  useEffect(() => save('projector', projector), [projector]);
 
   useEffect(() => {
     const onHash = () => setRoute(readRoute());
@@ -44,7 +47,7 @@ export function App() {
   const clearIncoming = useCallback(() => setIncoming(null), []);
 
   return (
-    <div className="app">
+    <div className={`app${projector ? ' projector' : ''}`}>
       <header className="app-header">
         <h1>
           <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" width={24} height={24} />
@@ -57,6 +60,11 @@ export function App() {
             </a>
           ))}
         </nav>
+        <span className="header-spacer" />
+        <label className="toggle" title="교실 프로젝터용: 글자와 선을 크고 진하게 표시합니다">
+          <input type="checkbox" checked={projector} onChange={(e) => setProjector(e.target.checked)} />
+          크게 보기
+        </label>
       </header>
       <main>
         {route === 'convert' && (
@@ -69,7 +77,17 @@ export function App() {
             }}
           />
         )}
-        {route === 'editor' && <EditorPage incoming={incoming} onIncomingConsumed={clearIncoming} />}
+        {route === 'editor' && (
+          <EditorPage
+            incoming={incoming}
+            onIncomingConsumed={clearIncoming}
+            onOpenCode={(c) => {
+              if (code.trim() && c !== code && !confirm('의사코드 화면의 내용을 이 코드로 바꿀까요?')) return;
+              setCode(c);
+              go('convert');
+            }}
+          />
+        )}
         {route === 'help' && (
           <HelpPage
             onOpenExample={(c) => {

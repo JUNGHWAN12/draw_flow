@@ -38,7 +38,10 @@ export function ArrowEdge(p: EdgeProps<ArrowEdgeType>) {
         path={path}
         markerEnd={p.markerEnd}
         // 이미지 내보내기에서도 선이 보이도록 색을 직접 지정한다
-        style={p.selected ? { stroke: '#2563eb', strokeWidth: 2.5 } : { stroke: '#334155', strokeWidth: 2 }}
+        style={{
+          stroke: p.selected ? '#2563eb' : '#334155',
+          strokeWidth: p.selected ? 'calc(var(--edge-w, 2px) + 0.5px)' : 'var(--edge-w, 2px)',
+        }}
         interactionWidth={16}
       />
       {p.data?.label && (

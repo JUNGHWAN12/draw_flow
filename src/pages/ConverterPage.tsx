@@ -13,6 +13,7 @@ import { load, save } from '../io/storage';
 import { downloadDataUrl, downloadText, pickTextFile } from '../io/files';
 import { exportImage } from '../io/imageExport';
 import { toDrawio } from '../io/drawioExport';
+import { printFlowchart } from '../io/print';
 
 interface Props {
   code: string;
@@ -145,6 +146,21 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
             onClick={() => downloadText(toDrawio(graph), '순서도.drawio', 'application/xml')}
           >
             draw.io
+          </button>
+          <button
+            disabled={!graph.nodes.length}
+            title="A4 한 장으로 인쇄합니다. 인쇄 창에서 'PDF로 저장'을 고르면 PDF가 됩니다."
+            onClick={async () => {
+              if (!flowRef.current) return;
+              try {
+                const image = await exportImage(flowRef.current, nodes, 'png');
+                printFlowchart({ title: '순서도', image, code });
+              } catch (e) {
+                alert((e as Error).message);
+              }
+            }}
+          >
+            인쇄 / PDF
           </button>
         </div>
         <div className={`flow-canvas${stale ? ' is-stale' : ''}`} ref={flowRef}>

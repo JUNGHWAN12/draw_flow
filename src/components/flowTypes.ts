@@ -8,6 +8,10 @@ export interface ShapeData extends Record<string, unknown> {
   line?: number;
   highlight?: boolean;
   editable?: boolean;
+  /** 역변환/자동 정렬에서 문제가 된 도형 */
+  error?: boolean;
+  /** 값이 바뀌면 글자 편집을 시작한다 (터치 화면의 '글자 고치기' 버튼) */
+  editRequest?: number;
 }
 
 export interface ArrowData extends Record<string, unknown> {
