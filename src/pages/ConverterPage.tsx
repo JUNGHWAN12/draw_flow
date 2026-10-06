@@ -13,7 +13,7 @@ import { load, save } from '../io/storage';
 import { downloadDataUrl, downloadText, pickTextFile } from '../io/files';
 import { exportImage } from '../io/imageExport';
 import { toDrawio } from '../io/drawioExport';
-import { printFlowchart } from '../io/print';
+import { PrintDialog } from '../components/PrintDialog';
 import { RunPanel } from '../components/RunPanel';
 import { useFollowNode } from '../components/useFollowNode';
 
@@ -32,6 +32,7 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
   const [hoverLine, setHoverLine] = useState<number | null>(null);
   const [running, setRunning] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [printing, setPrinting] = useState(false);
   const flowRef = useRef<HTMLDivElement>(null);
   const { fitView } = useReactFlow();
 
@@ -164,15 +165,7 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
           <button
             disabled={!graph.nodes.length}
             title="A4 한 장으로 인쇄합니다. 인쇄 창에서 'PDF로 저장'을 고르면 PDF가 됩니다."
-            onClick={async () => {
-              if (!flowRef.current) return;
-              try {
-                const image = await exportImage(flowRef.current, nodes, 'png');
-                printFlowchart({ title: '순서도', image, code });
-              } catch (e) {
-                alert((e as Error).message);
-              }
-            }}
+            onClick={() => setPrinting(true)}
           >
             인쇄 / PDF
           </button>
@@ -198,6 +191,14 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
           </ReactFlow>
           {stale && graph.nodes.length > 0 && <div className="stale-badge">오류를 고치면 순서도가 다시 그려집니다</div>}
         </div>
+        {printing && (
+          <PrintDialog
+            defaultTitle="순서도"
+            code={stale ? { ok: false, reason: '의사코드에 오류가 있습니다.' } : { ok: true, text: code }}
+            getImage={() => exportImage(flowRef.current!, nodes, 'png')}
+            onClose={() => setPrinting(false)}
+          />
+        )}
         {running && graph.nodes.length > 0 && (
           <RunPanel graph={graph} onStep={setCurrentId} onClose={() => setRunning(false)} />
         )}

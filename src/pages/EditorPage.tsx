@@ -26,7 +26,7 @@ import { load, save } from '../io/storage';
 import { downloadDataUrl, downloadText, parseDocument, pickTextFile, safeFilename, toDocument } from '../io/files';
 import { exportImage } from '../io/imageExport';
 import { toDrawio } from '../io/drawioExport';
-import { printFlowchart } from '../io/print';
+import { PrintDialog } from '../components/PrintDialog';
 import { RunPanel } from '../components/RunPanel';
 import { useFollowNode } from '../components/useFollowNode';
 
@@ -84,6 +84,7 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode, storageKey, onG
   const { screenToFlowPosition, fitView, deleteElements } = useReactFlow<ShapeNode, ArrowEdge>();
   const [panel, setPanel] = useState<CodePanel | null>(null);
   const [running, setRunning] = useState(false);
+  const [printing, setPrinting] = useState(false);
   const [currentId, setCurrentId] = useState<string | null>(null);
   useFollowNode(currentId, flowRef);
 
@@ -422,18 +423,22 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode, storageKey, onG
         <button
           disabled={!nodes.length}
           title="A4 한 장으로 인쇄합니다. 인쇄 창에서 'PDF로 저장'을 고르면 PDF가 됩니다."
-          onClick={async () => {
-            if (!flowRef.current) return;
-            try {
-              printFlowchart({ title, image: await exportImage(flowRef.current, nodes, 'png') });
-            } catch (e) {
-              alert((e as Error).message);
-            }
-          }}
+          onClick={() => setPrinting(true)}
         >
           인쇄 / PDF
         </button>
       </div>
+      {printing && (
+        <PrintDialog
+          defaultTitle={title}
+          code={(() => {
+            const r = graphToAst(runGraphData);
+            return r.ok ? { ok: true, text: toPseudocode(r.body) } : { ok: false, reason: r.issues[0].message };
+          })()}
+          getImage={() => exportImage(flowRef.current!, nodes, 'png')}
+          onClose={() => setPrinting(false)}
+        />
+      )}
 
       <div className="editor-body">
         <aside className="palette">
