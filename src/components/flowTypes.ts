@@ -12,6 +12,8 @@ export interface ShapeData extends Record<string, unknown> {
   error?: boolean;
   /** 값이 바뀌면 글자 편집을 시작한다 (터치 화면의 '글자 고치기' 버튼) */
   editRequest?: number;
+  /** 단계별 실행에서 지금 실행 중인 도형 */
+  current?: boolean;
 }
 
 export interface ArrowData extends Record<string, unknown> {

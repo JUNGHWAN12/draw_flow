@@ -14,6 +14,8 @@ import { downloadDataUrl, downloadText, pickTextFile } from '../io/files';
 import { exportImage } from '../io/imageExport';
 import { toDrawio } from '../io/drawioExport';
 import { printFlowchart } from '../io/print';
+import { RunPanel } from '../components/RunPanel';
+import { useFollowNode } from '../components/useFollowNode';
 
 interface Props {
   code: string;
@@ -28,6 +30,8 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
   const [graph, setGraph] = useState<FlowGraph>(EMPTY);
   const [errors, setErrors] = useState<ParseError[]>([]);
   const [hoverLine, setHoverLine] = useState<number | null>(null);
+  const [running, setRunning] = useState(false);
+  const [currentId, setCurrentId] = useState<string | null>(null);
   const flowRef = useRef<HTMLDivElement>(null);
   const { fitView } = useReactFlow();
 
@@ -52,10 +56,12 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
     () =>
       toRfNodes(graph.nodes).map((n) => ({
         ...n,
-        data: { ...n.data, highlight: hoverLine !== null && n.data.line === hoverLine },
+        data: { ...n.data, highlight: hoverLine !== null && n.data.line === hoverLine, current: n.id === currentId },
       })),
-    [graph, hoverLine],
+    [graph, hoverLine, currentId],
   );
+  const currentLine = currentId ? (graph.nodes.find((n) => n.id === currentId)?.line ?? null) : null;
+  useFollowNode(currentId, flowRef);
   const edges = useMemo(() => toRfEdges(graph.edges), [graph]);
   const errorLines = useMemo(() => new Set(errors.map((e) => e.line)), [errors]);
   const stale = errors.length > 0;
@@ -105,7 +111,7 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
           value={code}
           onChange={onCodeChange}
           errorLines={errorLines}
-          highlightLine={hoverLine}
+          highlightLine={currentLine ?? hoverLine}
           onHoverLine={setHoverLine}
         />
         <div className={`status ${stale ? 'status-error' : 'status-ok'}`} role="status">
@@ -132,6 +138,14 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
             대입을 ← 로 표시
           </label>
           <span className="spacer" />
+          <button
+            className={running ? 'active' : ''}
+            disabled={!graph.nodes.length}
+            onClick={() => setRunning((r) => !r)}
+            title="순서도를 한 단계씩 실행하며 변수 값의 변화를 봅니다"
+          >
+            ▶ 단계별 실행
+          </button>
           <button className="primary" disabled={stale || !graph.nodes.length} onClick={() => onSendToEditor(graph, code)}>
             편집기에서 고치기 →
           </button>
@@ -184,6 +198,9 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
           </ReactFlow>
           {stale && graph.nodes.length > 0 && <div className="stale-badge">오류를 고치면 순서도가 다시 그려집니다</div>}
         </div>
+        {running && graph.nodes.length > 0 && (
+          <RunPanel graph={graph} onStep={setCurrentId} onClose={() => setRunning(false)} />
+        )}
       </section>
     </div>
   );

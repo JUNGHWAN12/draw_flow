@@ -84,6 +84,25 @@ export function HelpPage({ onOpenExample }: Props) {
       </section>
 
       <section>
+        <h2>단계별 실행 (추적 표)</h2>
+        <ul>
+          <li>
+            순서도 위의 <b>▶ 단계별 실행</b>을 누르면 시작부터 한 단계씩 실행합니다. 지금 실행 중인 도형과 코드 줄이
+            노란색으로 표시됩니다.
+          </li>
+          <li>
+            <b>추적 표</b>에는 단계마다 값이 바뀐 변수가 기록되고, <b>출력</b> 칸에는 print 결과가 나옵니다. 표의 줄을
+            누르면 그 단계로 이동합니다.
+          </li>
+          <li>
+            <code>input()</code>에 들어갈 값은 <b>입력값</b> 칸에 한 줄에 하나씩 적습니다. 숫자처럼 보이면 숫자로
+            읽습니다.
+          </li>
+          <li>편집기에서 직접 그린 순서도도 실행할 수 있습니다. 도형 글자는 파이썬 문법으로 쓰세요.</li>
+        </ul>
+      </section>
+
+      <section>
         <h2>예제</h2>
         <div className="examples">
           {EXAMPLES.map((ex) => (

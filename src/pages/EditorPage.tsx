@@ -27,6 +27,8 @@ import { downloadDataUrl, downloadText, parseDocument, pickTextFile, safeFilenam
 import { exportImage } from '../io/imageExport';
 import { toDrawio } from '../io/drawioExport';
 import { printFlowchart } from '../io/print';
+import { RunPanel } from '../components/RunPanel';
+import { useFollowNode } from '../components/useFollowNode';
 
 interface Props {
   /** 의사코드 변환 화면에서 보낸 순서도 (보낼 때마다 새 객체) */
@@ -75,6 +77,9 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
   const flowRef = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView, deleteElements } = useReactFlow<ShapeNode, ArrowEdge>();
   const [panel, setPanel] = useState<CodePanel | null>(null);
+  const [running, setRunning] = useState(false);
+  const [currentId, setCurrentId] = useState<string | null>(null);
+  useFollowNode(currentId, flowRef);
 
   // ── 실행 취소 / 다시 실행 ──────────────────────────────
   const history = useRef<{ past: Snapshot[]; future: Snapshot[]; last: Snapshot; lastKey: string }>({
@@ -274,9 +279,20 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
     [panel],
   );
   const shownNodes = useMemo(
-    () => (errorIds.size ? nodes.map((n) => (errorIds.has(n.id) ? { ...n, data: { ...n.data, error: true } } : n)) : nodes),
-    [nodes, errorIds],
+    () =>
+      errorIds.size || currentId
+        ? nodes.map((n) =>
+            errorIds.has(n.id) || n.id === currentId
+              ? { ...n, data: { ...n.data, error: errorIds.has(n.id), current: n.id === currentId } }
+              : n,
+          )
+        : nodes,
+    [nodes, errorIds, currentId],
   );
+
+  // 실행에는 도형 글자와 연결만 중요하다 — 선택·이동으로는 다시 계산하지 않는다
+  const graphKey = essence({ nodes, edges });
+  const runGraphData = useMemo(() => fromRf(nodes, edges), [graphKey]);
 
   const toCode = () => {
     const r = graphToAst(graph());
@@ -374,6 +390,14 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
         </button>
         <button onClick={toCode} disabled={!nodes.length} title="그린 순서도를 파이썬식 의사코드로 바꿉니다">
           코드로 변환
+        </button>
+        <button
+          className={running ? 'active' : ''}
+          onClick={() => setRunning((r) => !r)}
+          disabled={!nodes.length}
+          title="순서도를 한 단계씩 실행하며 변수 값의 변화를 봅니다"
+        >
+          ▶ 단계별 실행
         </button>
         <span className="spacer" />
         <button disabled={!nodes.length} onClick={() => exportAs('png')}>
@@ -524,6 +548,10 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
           )}
         </div>
       </div>
+
+      {running && nodes.length > 0 && (
+        <RunPanel graph={runGraphData} onStep={setCurrentId} onClose={() => setRunning(false)} />
+      )}
 
       <div className={`status ${issues.length ? 'status-warn' : 'status-ok'}`}>
         {issues.length ? (

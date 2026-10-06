@@ -836,3 +836,234 @@ button.danger:hover:not(:disabled) {
 .projector .react-flow__minimap {
   display: none;
 }
+
+/* ── 단계별 실행 ───────────────────────────── */
+button.active {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.shape.is-current {
+  filter: drop-shadow(0 0 8px #2563eb) drop-shadow(0 0 2px #2563eb);
+}
+
+.shape-terminal.is-current,
+.shape-process.is-current {
+  background: #fde68a;
+}
+
+.run-panel {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  height: 42%;
+  min-height: 220px;
+  border-top: 2px solid var(--primary);
+  background: #fff;
+}
+
+.run-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.run-controls .spacer {
+  flex: 1;
+}
+
+.run-controls .close {
+  padding: 0 10px;
+}
+
+.run-count {
+  color: var(--muted);
+  font-size: 14px;
+  margin-left: 6px;
+}
+
+.run-note {
+  padding: 6px 12px;
+  font-family: var(--mono);
+  font-size: 14px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  border-bottom: 1px solid var(--border);
+}
+
+.run-note.is-error {
+  background: var(--error-soft);
+  color: var(--error);
+}
+
+.run-note.is-done {
+  background: #f0fdf4;
+  color: var(--ok);
+}
+
+.run-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 130px 1fr minmax(140px, 28%);
+}
+
+.run-body > * {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+}
+
+.run-body > *:last-child {
+  border-right: 0;
+}
+
+.run-inputs span,
+.run-output span {
+  padding: 6px 10px 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.run-inputs textarea {
+  flex: 1;
+  margin: 4px 8px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  resize: none;
+  font-family: var(--mono);
+  font-size: 14px;
+}
+
+.run-inputs small {
+  padding: 0 10px 6px;
+  color: var(--muted);
+}
+
+.run-output pre {
+  flex: 1;
+  margin: 4px 8px 8px;
+  padding: 8px;
+  overflow: auto;
+  background: #0f172a;
+  color: #e2e8f0;
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.run-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 8px 0;
+}
+
+.run-tabs button {
+  height: 28px;
+  font-size: 13px;
+}
+
+.run-tabs button.active {
+  background: var(--primary-soft);
+}
+
+.run-table {
+  flex: 1;
+  overflow: auto;
+  margin: 6px 8px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.run-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 13.5px;
+}
+
+.run-table th,
+.run-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  border-right: 1px solid #f1f5f9;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.run-table th {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  font-family: inherit;
+  z-index: 1;
+}
+
+.run-table tbody tr {
+  cursor: pointer;
+}
+
+.run-table tr.is-current td {
+  background: #dbeafe;
+}
+
+.run-table td.is-changed,
+.run-table tr.is-changed td {
+  font-weight: 700;
+  color: #1d4ed8;
+}
+
+.run-table .muted {
+  color: var(--muted);
+}
+
+.run-shape {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.run-branch {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.run-branch-yes {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.run-branch-no {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.projector .run-note,
+.projector .run-table table,
+.projector .run-output pre {
+  font-size: 18px;
+}
+
+@media (max-width: 800px) {
+  .run-body {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+
+  .run-body > * {
+    min-height: 120px;
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+}

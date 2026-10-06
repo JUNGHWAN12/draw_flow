@@ -84,7 +84,7 @@ function Label({ id, kind, data }: { id: string; kind: NodeKind; data: ShapeData
 }
 
 function classes(kind: string, p: NodeProps<ShapeNode>) {
-  return `shape shape-${kind}${p.data.highlight ? ' is-highlight' : ''}${p.data.error ? ' is-error' : ''}${p.selected ? ' is-selected' : ''}`;
+  return `shape shape-${kind}${p.data.highlight ? ' is-highlight' : ''}${p.data.error ? ' is-error' : ''}${p.data.current ? ' is-current' : ''}${p.selected ? ' is-selected' : ''}`;
 }
 
 export function TerminalNode(p: NodeProps<ShapeNode>) {
@@ -113,7 +113,7 @@ export function DecisionNode(p: NodeProps<ShapeNode>) {
         <polygon
           points="50,1 99,50 50,99 1,50"
           vectorEffect="non-scaling-stroke"
-          fill="#fef3c7"
+          fill={p.data.current ? '#fde68a' : '#fef3c7'}
           stroke={p.data.error ? '#dc2626' : p.selected ? '#2563eb' : '#b45309'}
           strokeWidth={p.selected || p.data.error ? 3 : 2}
         />
