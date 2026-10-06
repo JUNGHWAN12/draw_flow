@@ -21,7 +21,7 @@ import { nodeSize } from '../core/shapes';
 import { graphToAst, type StructureIssue } from '../core/structure';
 import { toPseudocode } from '../core/codegen';
 import { buildFlowchart } from '../core/flowchart';
-import type { EdgeLabel, FlowDocument, NodeKind } from '../core/types';
+import type { EdgeLabel, FlowDocument, FlowGraph, NodeKind } from '../core/types';
 import { load, save } from '../io/storage';
 import { downloadDataUrl, downloadText, parseDocument, pickTextFile, safeFilename, toDocument } from '../io/files';
 import { exportImage } from '../io/imageExport';
@@ -32,10 +32,14 @@ import { useFollowNode } from '../components/useFollowNode';
 
 interface Props {
   /** 의사코드 변환 화면에서 보낸 순서도 (보낼 때마다 새 객체) */
-  incoming: FlowDocument | null;
-  onIncomingConsumed: () => void;
+  incoming?: FlowDocument | null;
+  onIncomingConsumed?: () => void;
   /** 순서도에서 만든 의사코드를 변환 화면에서 열기 */
-  onOpenCode: (code: string) => void;
+  onOpenCode?: (code: string) => void;
+  /** 자동 저장 위치 (문제 풀이마다 따로 저장) */
+  storageKey?: string;
+  /** 순서도가 바뀔 때마다 (문제 채점용) */
+  onGraphChange?: (graph: FlowGraph) => void;
 }
 
 /** 역변환 결과 창 */
@@ -66,14 +70,16 @@ function essence(s: Snapshot): string {
   ]);
 }
 
-function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
+function EditorInner({ incoming, onIncomingConsumed, onOpenCode, storageKey, onGraphChange }: Props) {
+  const docKey = storageKey ?? 'editorDoc';
+  const titleKey = storageKey ? `${storageKey}:title` : 'editorTitle';
   const initial = useMemo<Snapshot>(() => {
-    const doc = load<FlowDocument | null>('editorDoc', null);
+    const doc = load<FlowDocument | null>(docKey, null);
     return doc ? fromDoc(doc, true) : { nodes: [], edges: [] };
   }, []);
   const [nodes, setNodes] = useState<ShapeNode[]>(initial.nodes);
   const [edges, setEdges] = useState<ArrowEdge[]>(initial.edges);
-  const [title, setTitle] = useState<string>(() => load('editorTitle', '내 순서도'));
+  const [title, setTitle] = useState<string>(() => load(titleKey, '내 순서도'));
   const flowRef = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition, fitView, deleteElements } = useReactFlow<ShapeNode, ArrowEdge>();
   const [panel, setPanel] = useState<CodePanel | null>(null);
@@ -102,12 +108,12 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
       h.last = snap;
       h.lastKey = key;
       forceRender((x) => x + 1);
-      save('editorDoc', toDocument(fromRf(nodes, edges), title));
+      save(docKey, toDocument(fromRf(nodes, edges), title));
     }, 250);
     return () => clearTimeout(t);
-  }, [nodes, edges, title]);
+  }, [nodes, edges, title, docKey]);
 
-  useEffect(() => save('editorTitle', title), [title]);
+  useEffect(() => save(titleKey, title), [title, titleKey]);
 
   // 다른 화면으로 넘어갈 때 마지막 변경도 저장
   const latest = useRef({ nodes, edges, title });
@@ -115,7 +121,7 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
   useEffect(
     () => () => {
       const l = latest.current;
-      save('editorDoc', toDocument(fromRf(l.nodes, l.edges), l.title));
+      save(docKey, toDocument(fromRf(l.nodes, l.edges), l.title));
     },
     [],
   );
@@ -165,7 +171,7 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
 
   // ── 변환 화면에서 받은 순서도 ─────────────────────────
   useEffect(() => {
-    if (!incoming) return;
+    if (!incoming || !onIncomingConsumed) return;
     const snap = fromDoc(incoming, true);
     setNodes(snap.nodes);
     setEdges(snap.edges);
@@ -293,6 +299,7 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
   // 실행에는 도형 글자와 연결만 중요하다 — 선택·이동으로는 다시 계산하지 않는다
   const graphKey = essence({ nodes, edges });
   const runGraphData = useMemo(() => fromRf(nodes, edges), [graphKey]);
+  useEffect(() => onGraphChange?.(runGraphData), [runGraphData, onGraphChange]);
 
   const toCode = () => {
     const r = graphToAst(graph());
@@ -519,9 +526,11 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode }: Props) {
                   <pre>{panel.code}</pre>
                   <div className="drawer-actions">
                     <button onClick={() => navigator.clipboard?.writeText(panel.code)}>복사</button>
-                    <button className="primary" onClick={() => onOpenCode(panel.code)}>
-                      의사코드 화면에서 열기 →
-                    </button>
+                    {onOpenCode && (
+                      <button className="primary" onClick={() => onOpenCode(panel.code)}>
+                        의사코드 화면에서 열기 →
+                      </button>
+                    )}
                   </div>
                 </>
               ) : (

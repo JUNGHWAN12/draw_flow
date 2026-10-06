@@ -2,27 +2,35 @@ import { useCallback, useEffect, useState } from 'react';
 import { ConverterPage } from './pages/ConverterPage';
 import { EditorPage } from './pages/EditorPage';
 import { HelpPage } from './pages/HelpPage';
+import { ProblemPage } from './pages/ProblemPage';
 import type { FlowDocument } from './core/types';
 import { EXAMPLES } from './examples';
 import { load, save } from './io/storage';
 import { toDocument } from './io/files';
 
-type Route = 'convert' | 'editor' | 'help';
+type Route = 'convert' | 'editor' | 'problem' | 'help';
 
 const TABS: { route: Route; name: string }[] = [
   { route: 'convert', name: '의사코드 → 순서도' },
   { route: 'editor', name: '순서도 편집기' },
+  { route: 'problem', name: '문제' },
   { route: 'help', name: '도움말 · 예제' },
 ];
 
 // GitHub Pages에서 새로고침해도 404가 나지 않도록 해시 주소(#/editor)를 쓴다
 function readRoute(): Route {
-  const r = location.hash.replace(/^#\/?/, '');
+  const r = location.hash.replace(/^#\/?/, '').split('?')[0];
   return TABS.some((t) => t.route === r) ? (r as Route) : 'convert';
+}
+
+/** #/problem?d=… 의 d 값 (학생용 문제 링크) */
+function readProblem(): string | null {
+  return new URLSearchParams(location.hash.split('?')[1] ?? '').get('d');
 }
 
 export function App() {
   const [route, setRoute] = useState<Route>(readRoute);
+  const [problemData, setProblemData] = useState<string | null>(readProblem);
   const [code, setCode] = useState<string>(() => load('code', EXAMPLES[1].code));
   const [incoming, setIncoming] = useState<FlowDocument | null>(null);
   const [projector, setProjector] = useState<boolean>(() => load('projector', false));
@@ -30,7 +38,10 @@ export function App() {
   useEffect(() => save('projector', projector), [projector]);
 
   useEffect(() => {
-    const onHash = () => setRoute(readRoute());
+    const onHash = () => {
+      setRoute(readRoute());
+      setProblemData(readProblem());
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
@@ -88,6 +99,7 @@ export function App() {
             }}
           />
         )}
+        {route === 'problem' && <ProblemPage key={problemData ?? 'author'} encoded={problemData} />}
         {route === 'help' && (
           <HelpPage
             onOpenExample={(c) => {
