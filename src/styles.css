@@ -1476,3 +1476,14 @@ a.button {
   flex: 0 0 42%;
   background: repeating-linear-gradient(to bottom, #fff 0 3px, #cbd5e1 3px 4px);
 }
+
+/* ── 아래쪽 저작권 표시 ─────────────────────── */
+.app-footer {
+  flex: none;
+  padding: 3px 16px;
+  border-top: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}

@@ -109,6 +109,7 @@ export function App() {
           />
         )}
       </main>
+      <footer className="app-footer">ⓒjunghwan with claude</footer>
     </div>
   );
 }
