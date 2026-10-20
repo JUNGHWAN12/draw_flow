@@ -10,7 +10,7 @@ import type { ParseError } from '../core/ast';
 import type { FlowGraph } from '../core/types';
 import { EXAMPLES } from '../examples';
 import { load, save } from '../io/storage';
-import { downloadDataUrl, downloadText, pickTextFile } from '../io/files';
+import { downloadDataUrl, downloadText, pickTextFile, toDocument } from '../io/files';
 import { exportImage } from '../io/imageExport';
 import { toDrawio } from '../io/drawioExport';
 import { PrintDialog } from '../components/PrintDialog';
@@ -153,9 +153,10 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
           </button>
           {boardEnabled() && (
             <button
-              disabled={stale || !code.trim()}
-              title="이 의사코드를 수업 게시판 글쓰기 창에 채워서 엽니다. 게시판에서 확인한 뒤 올립니다."
-              onClick={() => openOnBoard({ v: 1, app: 'draw_flow', kind: 'pseudocode', title: '', code })}
+              disabled={stale || !graph.nodes.length}
+              title="이 의사코드와 순서도를 수업 게시판 글쓰기 창에 채워서 엽니다. 게시판에서 확인한 뒤 올립니다."
+              // 순서도와 의사코드를 함께 보낸다 (게시판에서 순서도 그림 + 의사코드 블록으로 보임)
+              onClick={() => openOnBoard({ v: 1, app: 'draw_flow', kind: 'flow', title: '', doc: toDocument(graph, '', code) })}
             >
               게시판에 올리기
             </button>
