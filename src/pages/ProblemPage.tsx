@@ -10,6 +10,9 @@ import type { FlowGraph } from '../core/types';
 import { decodeProblem, encodeProblem, problemId, problemUrl, type Problem, type ProblemMode } from '../io/share';
 import { load, save } from '../io/storage';
 import { EXAMPLES } from '../examples';
+import { toPseudocode } from '../core/codegen';
+import { toDocument } from '../io/files';
+import { boardEnabled, openOnBoard } from '../io/board';
 
 interface Props {
   /** 주소의 d= 값 (있으면 풀기 화면) */
@@ -262,6 +265,26 @@ function SolveView({ encoded }: { encoded: string }) {
     }
   };
 
+  // 채점한 답을 게시판 과제 제출 글로 보낸다 (정답은 넣지 않는다)
+  const submit = () => {
+    if (!result) return;
+    const base = {
+      v: 1 as const,
+      app: 'draw_flow' as const,
+      kind: 'submission' as const,
+      title: problem.title,
+      problem: { id, title: problem.title, mode: problem.mode },
+      grade: { verdict: result.verdict, items: result.items },
+    };
+    if (problem.mode === 'flow2code') {
+      openOnBoard({ ...base, code });
+    } else if (studentGraph) {
+      const r = graphToAst(studentGraph);
+      const pseudo = r.ok ? toPseudocode(r.body) : undefined;
+      openOnBoard({ ...base, doc: toDocument(studentGraph, problem.title, pseudo), ...(pseudo ? { code: pseudo } : {}) });
+    }
+  };
+
   const mode = MODES.find((m) => m.mode === problem.mode)!;
   return (
     <div className="problem solve">
@@ -296,6 +319,16 @@ function SolveView({ encoded }: { encoded: string }) {
             </div>
           )}
           {result && <Verdict result={result} mode={problem.mode} />}
+          {result && boardEnabled() && (
+            <div className="board-submit">
+              <button className="primary" onClick={submit}>
+                게시판에 제출
+              </button>
+              <p className="muted small">
+                내 답과 채점 결과가 게시판 &apos;과제 제출&apos; 글쓰기 창에 채워집니다. 정답은 보내지 않으며, 채점 결과는 참고용입니다.
+              </p>
+            </div>
+          )}
         </div>
       </section>
       <section className="panel problem-work">

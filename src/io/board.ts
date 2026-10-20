@@ -1,6 +1,8 @@
 // 수업 게시판(class_board) 연계 — 주소 만들기와 받은 주소 읽기 (형식: docs/BOARD_LINK.md)
 // 게시판 주소(VITE_BOARD_URL)가 없으면 연계 기능은 모두 꺼진다.
 
+import { encodePayload, MAX_PAYLOAD_BYTES, parseBoardLink, type BoardLink } from './share';
+
 /** 빌드할 때 넣는 게시판 주소. 예: https://class-board.vercel.app */
 export const BOARD_URL = normalizeBase(import.meta.env.VITE_BOARD_URL ?? '');
 
@@ -52,5 +54,37 @@ export function rememberedBoard(): string | null {
     return isBoardId(id) ? id : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * 게시판으로 보낼 주소를 만든다. 게시판이 받는 한도(풀었을 때 50KB)를 넘으면 오류.
+ * 게시판에서 열렸던 탭이면 그 게시판 아이디를 붙여 바로 그 게시판으로 돌아간다.
+ */
+export async function boardLinkUrl(link: BoardLink, base = BOARD_URL): Promise<string> {
+  const clean = parseBoardLink(link);
+  if (new TextEncoder().encode(JSON.stringify(clean)).length > MAX_PAYLOAD_BYTES) {
+    throw new Error('내용이 너무 길어 게시판으로 보낼 수 없습니다. (최대 50KB)');
+  }
+  return boardShareUrl(await encodePayload(clean), rememberedBoard(), base);
+}
+
+/**
+ * 게시판을 새 탭으로 연다. 압축을 기다리는 동안 팝업 차단에 걸리지 않도록
+ * 빈 탭을 먼저 열고 주소를 나중에 넣는다.
+ */
+export async function openOnBoard(link: BoardLink): Promise<void> {
+  const win = window.open('', '_blank');
+  try {
+    const url = await boardLinkUrl(link);
+    if (win) {
+      win.opener = null;
+      win.location.href = url;
+    } else {
+      location.href = url;
+    }
+  } catch (e) {
+    win?.close();
+    alert((e as Error).message);
   }
 }

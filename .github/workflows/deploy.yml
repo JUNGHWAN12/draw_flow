@@ -31,7 +31,11 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # 수업 게시판 주소. 저장소 Settings → Secrets and variables → Actions → Variables 에
+      # BOARD_URL 을 넣으면 [게시판에 올리기]·[게시판에 제출] 버튼이 보인다. 없으면 버튼이 숨겨진다.
       - run: npm run build
+        env:
+          VITE_BOARD_URL: ${{ vars.BOARD_URL }}
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist

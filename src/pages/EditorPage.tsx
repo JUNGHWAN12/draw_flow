@@ -29,6 +29,7 @@ import { toDrawio } from '../io/drawioExport';
 import { PrintDialog } from '../components/PrintDialog';
 import { RunPanel } from '../components/RunPanel';
 import { useFollowNode } from '../components/useFollowNode';
+import { boardEnabled, openOnBoard } from '../io/board';
 
 interface Props {
   /** 의사코드 변환 화면에서 보낸 순서도 (보낼 때마다 새 객체) */
@@ -408,6 +409,21 @@ function EditorInner({ incoming, onIncomingConsumed, onOpenCode, storageKey, onG
           ▶ 단계별 실행
         </button>
         <span className="spacer" />
+        {/* 문제 풀이 화면(storageKey 있음)에서는 [게시판에 제출]을 쓰므로 숨긴다 */}
+        {boardEnabled() && !storageKey && (
+          <button
+            disabled={!nodes.length}
+            title="이 순서도를 수업 게시판 글쓰기 창에 채워서 엽니다. 게시판에서 확인한 뒤 올립니다."
+            onClick={() => {
+              const g = graph();
+              const r = graphToAst(g);
+              const doc = toDocument(g, title, r.ok ? toPseudocode(r.body) : undefined);
+              openOnBoard({ v: 1, app: 'draw_flow', kind: 'flow', title, doc });
+            }}
+          >
+            게시판에 올리기
+          </button>
+        )}
         <button disabled={!nodes.length} onClick={() => exportAs('png')}>
           PNG
         </button>

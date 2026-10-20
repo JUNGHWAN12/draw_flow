@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ConverterPage } from './pages/ConverterPage';
 import { EditorPage } from './pages/EditorPage';
 import { HelpPage } from './pages/HelpPage';
@@ -7,6 +7,8 @@ import type { FlowDocument } from './core/types';
 import { EXAMPLES } from './examples';
 import { load, save } from './io/storage';
 import { toDocument } from './io/files';
+import { readIncoming, rememberBoard } from './io/board';
+import { decodeBoardLink } from './io/share';
 
 type Route = 'convert' | 'editor' | 'problem' | 'help';
 
@@ -28,6 +30,9 @@ function readProblem(): string | null {
   return new URLSearchParams(location.hash.split('?')[1] ?? '').get('d');
 }
 
+/** 이미 불러온 게시판 내용 (개발 모드에서 effect 가 두 번 실행돼도 한 번만 묻도록) */
+const receivedSrc = new Set<string>();
+
 export function App() {
   const [route, setRoute] = useState<Route>(readRoute);
   const [problemData, setProblemData] = useState<string | null>(readProblem);
@@ -44,6 +49,44 @@ export function App() {
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
+  // ── 게시판에서 보낸 내용 받기 (#/convert?src=…&board=…, #/editor?src=…) ──
+  const codeRef = useRef(code);
+  codeRef.current = code;
+  useEffect(() => {
+    const receive = async () => {
+      const { src, board } = readIncoming(location.hash);
+      rememberBoard(board);
+      if (!src || receivedSrc.has(src)) return;
+      receivedSrc.add(src);
+      // 새로고침해도 다시 불러오지 않도록 주소에서 내용을 지운다 (hashchange 는 일어나지 않음)
+      history.replaceState(null, '', `${location.pathname}${location.search}#/${readRoute()}`);
+      let link;
+      try {
+        link = await decodeBoardLink(src);
+      } catch (e) {
+        alert((e as Error).message);
+        return;
+      }
+      const name = link.title ? `'${link.title}' ` : '';
+      if (link.kind === 'pseudocode') {
+        const cur = codeRef.current;
+        if (cur.trim() && cur !== link.code && !confirm(`게시판에서 보낸 ${name}의사코드를 불러올까요?\n지금 입력한 의사코드는 바뀝니다.`)) return;
+        setCode(link.code);
+        location.hash = '/convert';
+      } else if (link.kind === 'flow') {
+        const cur = load<FlowDocument | null>('editorDoc', null);
+        if (cur?.nodes?.length && !confirm(`게시판에서 보낸 ${name}순서도를 불러올까요?\n지금 편집기의 순서도는 바뀝니다. (실행 취소 가능)`)) return;
+        setIncoming({ ...link.doc, title: link.title || link.doc.title });
+        location.hash = '/editor';
+      } else {
+        alert('과제 제출 내용은 draw_flow에서 열 수 없습니다. 게시판에서 확인해 주세요.');
+      }
+    };
+    receive();
+    window.addEventListener('hashchange', receive);
+    return () => window.removeEventListener('hashchange', receive);
   }, []);
 
   useEffect(() => {
