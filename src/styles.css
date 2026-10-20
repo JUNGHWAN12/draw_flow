@@ -1487,3 +1487,12 @@ a.button {
   font-size: 12px;
   text-align: center;
 }
+
+/* 문제 화면: 게시판에 제출 */
+.board-submit {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}

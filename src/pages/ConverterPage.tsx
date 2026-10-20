@@ -16,6 +16,7 @@ import { toDrawio } from '../io/drawioExport';
 import { PrintDialog } from '../components/PrintDialog';
 import { RunPanel } from '../components/RunPanel';
 import { useFollowNode } from '../components/useFollowNode';
+import { boardEnabled, openOnBoard } from '../io/board';
 
 interface Props {
   code: string;
@@ -150,6 +151,15 @@ function ConverterInner({ code, onCodeChange, onSendToEditor }: Props) {
           <button className="primary" disabled={stale || !graph.nodes.length} onClick={() => onSendToEditor(graph, code)}>
             편집기에서 고치기 →
           </button>
+          {boardEnabled() && (
+            <button
+              disabled={stale || !code.trim()}
+              title="이 의사코드를 수업 게시판 글쓰기 창에 채워서 엽니다. 게시판에서 확인한 뒤 올립니다."
+              onClick={() => openOnBoard({ v: 1, app: 'draw_flow', kind: 'pseudocode', title: '', code })}
+            >
+              게시판에 올리기
+            </button>
+          )}
           <button disabled={!graph.nodes.length} onClick={() => exportAs('png')}>
             PNG
           </button>
