@@ -1,0 +1,117 @@
+<!doctype html>
+<!--
+  draw_flow 사용 안내 (A4 한 장) — docs/draw_flow_사용안내.pdf 의 원본
+  다시 만들기: npm의 pretendard 패키지에서 Pretendard-{Regular,SemiBold,Bold,ExtraBold}.woff2 를
+  이 폴더에 복사한 뒤, Chrome으로 이 파일을 열어 인쇄 → 용지 A4, 여백 없음, 배경 그래픽 켜기 → PDF로 저장
+-->
+<html lang="ko"><head><meta charset="utf-8"><title>draw_flow 사용 안내</title>
+<style>
+@font-face { font-family: P; font-weight: 400; src: url(Pretendard-Regular.woff2); }
+@font-face { font-family: P; font-weight: 600; src: url(Pretendard-SemiBold.woff2); }
+@font-face { font-family: P; font-weight: 700; src: url(Pretendard-Bold.woff2); }
+@font-face { font-family: P; font-weight: 800; src: url(Pretendard-ExtraBold.woff2); }
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root { --ink:#0f172a; --muted:#64748b; --line:#e2e8f0; --blue:#2563eb; --soft:#eff6ff; }
+html, body { width: 210mm; height: 297mm; }
+body { font-family: P, sans-serif; color: var(--ink); font-size: 9.6pt; line-height: 1.5; padding: 9.5mm 12mm 7.5mm; display: flex; flex-direction: column; gap: 3.4mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+code, .mono { font-family: 'D2Coding', 'WenQuanYi Zen Hei Mono', monospace; font-size: 0.92em; }
+header { display: flex; align-items: center; gap: 6mm; }
+.brand { flex: 1; }
+.logo { display: flex; align-items: center; gap: 2.5mm; font-size: 23pt; font-weight: 800; letter-spacing: -0.5px; }
+.logo svg { width: 9mm; height: 9mm; }
+.tag { margin-top: 1mm; font-size: 12.5pt; font-weight: 600; }
+.sub { margin-top: 1.2mm; color: var(--muted); }
+.qr { display: flex; align-items: center; gap: 3mm; padding: 2.5mm 3mm; border: 1px solid var(--line); border-radius: 3mm; }
+.qr img { width: 24mm; height: 24mm; display: block; }
+.qr b { display: block; font-size: 9pt; }
+.qr span { display: block; font-size: 8pt; color: var(--muted); }
+.qr .url { margin-top: 1mm; font-size: 8.2pt; color: var(--blue); font-weight: 600; }
+.shot { flex: none; width: 82%; align-self: center; border: 1px solid var(--line); border-radius: 2.5mm; overflow: hidden; }
+.shot img { width: 100%; display: block; }
+.cap { margin-top: -2mm; font-size: 8pt; color: var(--muted); text-align: center; }
+h2 { font-size: 11.5pt; font-weight: 700; margin-bottom: 2mm; display: flex; align-items: center; gap: 2mm; }
+h2::before { content: ''; width: 1.2mm; height: 4mm; border-radius: 1mm; background: var(--blue); }
+.features { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5mm; }
+.f { padding: 2.6mm 3mm; border: 1px solid var(--line); border-radius: 2.5mm; }
+.f > b { display: block; font-size: 10pt; margin-bottom: 0.6mm; }
+.f > b i { font-style: normal; display: inline-block; width: 5mm; height: 5mm; line-height: 5mm; text-align: center; border-radius: 50%; background: var(--blue); color: #fff; font-size: 8pt; margin-right: 1.5mm; vertical-align: 0.3mm; }
+.f p { color: #334155; font-size: 9pt; }
+.row { display: grid; grid-template-columns: 1.05fr 1fr; gap: 5mm; }
+.steps { list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 1.6mm; }
+.steps li { counter-increment: s; display: flex; gap: 2mm; }
+.steps li::before { content: counter(s); flex: none; width: 5mm; height: 5mm; line-height: 5mm; border-radius: 50%; text-align: center; background: var(--soft); color: var(--blue); font-weight: 700; font-size: 8.5pt; margin-top: 0.3mm; }
+pre { margin-top: 1.6mm; padding: 1.6mm 3mm; background: #f8fafc; border: 1px solid var(--line); border-radius: 2mm; font-family: 'D2Coding','WenQuanYi Zen Hei Mono',monospace; font-size: 8.3pt; line-height: 1.38; }
+.shapes { display: grid; grid-template-columns: 1fr 1fr; gap: 2mm; }
+.s { display: flex; align-items: center; gap: 2.5mm; padding: 1.8mm 2.5mm; border: 1px solid var(--line); border-radius: 2mm; }
+.s svg { flex: none; width: 11mm; height: 7mm; }
+.s b { display: block; font-size: 9.5pt; }
+.s span { display: block; font-size: 8pt; color: var(--muted); }
+.tips { padding: 2.6mm 4mm; background: var(--soft); border-radius: 2.5mm; }
+.tips ul { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 1.2mm 5mm; }
+.tips li { padding-left: 3.5mm; position: relative; font-size: 9pt; }
+.tips li::before { content: ''; position: absolute; left: 0; top: 2mm; width: 1.4mm; height: 1.4mm; border-radius: 50%; background: var(--blue); }
+.tips b { font-weight: 700; }
+footer { margin-top: auto; display: flex; justify-content: space-between; color: var(--muted); font-size: 8pt; border-top: 1px solid var(--line); padding-top: 2mm; }
+</style></head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo"><svg viewBox="0 0 32 32"><rect x="8" y="1" width="16" height="8" rx="4" fill="#2563eb"/><path d="M16 9v4" stroke="#334155" stroke-width="2"/><path d="M16 13l8 6-8 6-8-6z" fill="#f59e0b"/><path d="M16 25v3" stroke="#334155" stroke-width="2"/><rect x="9" y="27" width="14" height="4" fill="#10b981"/></svg>draw_flow</div>
+    <div class="tag">파이썬으로 쓴 의사코드를 바로 순서도로</div>
+    <div class="sub">설치·로그인 없이 브라우저만 있으면 됩니다. 학교 PC, 노트북, 태블릿 어디서나 사용할 수 있어요.</div>
+  </div>
+  <div class="qr"><img src="qr.svg" alt="사이트 QR 코드"><div><b>휴대폰·태블릿으로</b><span>QR 코드를 찍어 바로 열기</span><div class="url">junghwan12.github.io<br>/draw_flow</div></div></div>
+</header>
+
+<div class="shot"><img src="run.png" alt="의사코드와 순서도, 단계별 실행 화면"></div>
+<div class="cap">왼쪽에 의사코드를 쓰면 오른쪽에 순서도가 그려지고, 아래에서 한 단계씩 실행하며 변수의 변화를 볼 수 있습니다.</div>
+
+<section>
+  <h2>무엇을 할 수 있나요?</h2>
+  <div class="features">
+    <div class="f"><b><i>1</i>의사코드 → 순서도</b><p>파이썬 문법으로 쓰면 바로 순서도로 그려 줍니다. 틀린 곳은 몇 번째 줄인지 한국어로 알려 줘요.</p></div>
+    <div class="f"><b><i>2</i>순서도 편집기</b><p>도형을 놓고 화살표로 이어 직접 그립니다. <b>자동 정렬</b>과 <b>코드로 변환</b>도 할 수 있어요.</p></div>
+    <div class="f"><b><i>3</i>단계별 실행 (추적 표)</b><p>지금 실행 중인 도형과 코드 줄이 노랗게 표시되고, 변수 값의 변화가 추적 표에 기록됩니다.</p></div>
+    <div class="f"><b><i>4</i>문제 · 자동 채점</b><p>선생님이 만든 문제 링크를 열어 풀고 <b>채점하기</b>를 누르면, 짜임새와 실행 결과를 비교해 줍니다.</p></div>
+  </div>
+</section>
+
+<div class="row">
+  <section>
+    <h2>이렇게 시작해요</h2>
+    <ol class="steps">
+      <li><span>사이트를 열고 <b>의사코드 → 순서도</b> 화면에서 코드를 씁니다. <b>예제 불러오기</b>로 시작해도 좋아요.</span></li>
+      <li><span>콜론(:) 다음 줄은 <b>공백 4칸</b> 들여쓰기 (Tab 키나 Enter로 자동).</span></li>
+      <li><span><b>▶ 단계별 실행</b>으로 흐름을 따라가 보고, <b>편집기에서 고치기</b>로 순서도를 다듬어요.</span></li>
+    </ol>
+<pre>n = int(input())
+합 = 0
+for i in range(1, n + 1):
+    합 = 합 + i
+print(합)</pre>
+  </section>
+  <section>
+    <h2>순서도 도형은 4가지</h2>
+    <div class="shapes">
+      <div class="s"><svg viewBox="0 0 44 28"><rect x="2" y="5" width="40" height="18" rx="9" fill="#e0f2fe" stroke="#0369a1" stroke-width="2"/></svg><div><b>터미널</b><span>시작, 끝, 반환</span></div></div>
+      <div class="s"><svg viewBox="0 0 44 28"><rect x="3" y="5" width="38" height="18" fill="#fff" stroke="#334155" stroke-width="2"/></svg><div><b>처리</b><span>계산·대입·입력·출력</span></div></div>
+      <div class="s"><svg viewBox="0 0 44 28"><path d="M22 2 L42 14 L22 26 L2 14 Z" fill="#fef3c7" stroke="#b45309" stroke-width="2"/></svg><div><b>판단</b><span>조건 (예 / 아니오)</span></div></div>
+      <div class="s"><svg viewBox="0 0 44 28"><path d="M4 14 H34" stroke="#334155" stroke-width="2.5"/><path d="M33 8 L42 14 L33 20 Z" fill="#334155"/></svg><div><b>화살표</b><span>흐름의 방향</span></div></div>
+    </div>
+    <p style="margin-top:2.2mm;font-size:8.6pt;color:#334155">지원 문법: <code>input</code> <code>print</code> <code>if/elif/else</code> <code>while</code> <code>for</code> <code>break</code> <code>continue</code> <code>def/return</code>. 자세한 내용은 사이트의 <b>도움말 · 예제</b>를 보세요.</p>
+  </section>
+</div>
+
+<section class="tips">
+  <h2>꼭 알아 두세요</h2>
+  <ul>
+    <li>작업은 <b>지금 쓰는 기기의 브라우저에만</b> 저장돼요. 학교 PC에서는 <b>저장(.json)</b>이나 <b>인쇄 / PDF</b>로 꼭 챙기세요.</li>
+    <li><b>인쇄 / PDF</b>로 순서도·의사코드를 A4 한 장으로 내보내거나 학습지로 만들 수 있어요.</li>
+    <li>교실 화면에 띄울 때는 오른쪽 위 <b>크게 보기</b>를 켜세요.</li>
+    <li>태블릿에서는 도형을 누르면 위쪽에 <b>글자 고치기 · 삭제</b> 버튼이 나와요.</li>
+  </ul>
+</section>
+
+<footer><span>https://junghwan12.github.io/draw_flow/</span><span>ⓒjunghwan with claude</span></footer>
+</body></html>
